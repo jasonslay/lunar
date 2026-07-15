@@ -2,11 +2,12 @@ use bevy::prelude::*;
 use bevy::render::camera::{CameraProjection, Projection, ScalingMode};
 use bevy::render::view::RenderLayers;
 use bevy::sprite::{Anchor, ColorMaterial, MeshMaterial2d};
+use bevy::window::PrimaryWindow;
 use glam::Vec2;
 use rand::Rng;
 
 use crate::game::{GameState, GameStatus};
-use crate::lander::Lander;
+use crate::lander::{Lander, LANDER_BODY_FILL};
 use crate::physics::{Thruster, PIXELS_PER_METER};
 use crate::world::{World, SCREEN_HEIGHT, SCREEN_WIDTH, TERRAIN_MARKER_SPACING, WORLD_WIDTH};
 
@@ -14,8 +15,15 @@ const GREEN: Color = Color::srgb(0.2, 1.0, 0.4);
 const DIM_GREEN: Color = Color::srgb(0.1, 0.5, 0.2);
 const BRIGHT_GREEN: Color = Color::srgb(0.4, 1.0, 0.6);
 const LANDER_FILL: Color = Color::srgb(0.1, 0.48, 0.2);
+
 const PLUME_CORE: Color = Color::srgb(1.0, 0.75, 0.2);
 const PLUME_OUTER: Color = Color::srgb(1.0, 0.35, 0.1);
+const DUST_BRIGHT: Color = Color::srgb(0.55, 1.0, 0.65);
+const DUST_DIM: Color = Color::srgb(0.12, 0.42, 0.22);
+/// Ray length for finding where exhaust meets terrain (much longer than the visible plume).
+const MAX_DUST_RAY_M: f32 = 28.0;
+/// Dust fades in as the nozzle gets within this distance of the impact point.
+const DUST_FALLOFF_M: f32 = 20.0;
 const STAR_DIM: Color = Color::srgb(0.7, 0.85, 1.0);
 const STAR_BRIGHT: Color = Color::srgb(1.0, 1.0, 1.0);
 const SKY_TOP: f32 = 4.0;
@@ -30,6 +38,7 @@ const STATUS_BG_HEIGHT: f32 = 52.0;
 const STATUS_BELOW_HORIZON: f32 = 40.0;
 const PANEL_COLOR: Color = Color::srgba(0.0, 0.0, 0.0, 0.94);
 const UI_LAYERS: RenderLayers = RenderLayers::layer(1);
+const CRATER_HASH_SCALE: f32 = 43_758.547;
 
 #[derive(Component)]
 pub struct HudPanel;
@@ -46,37 +55,37 @@ pub struct StatusText;
 #[derive(Component)]
 pub struct LanderBody;
 
-/// Hull outline in local meters (clockwise).
-const LANDER_FILL_LOCAL: [Vec2; 6] = [
-    Vec2::new(0.0, -2.0),
-    Vec2::new(1.0, -0.75),
-    Vec2::new(2.25, 1.5),
-    Vec2::new(0.0, 1.25),
-    Vec2::new(-2.25, 1.5),
-    Vec2::new(-1.0, -0.75),
-];
+#[derive(Component)]
+struct UiCamera;
 
 pub fn setup_camera(mut commands: Commands) {
-    let mut projection = OrthographicProjection {
+    let mut world_projection = OrthographicProjection {
         scaling_mode: ScalingMode::Fixed {
             width: SCREEN_WIDTH,
             height: SCREEN_HEIGHT,
         },
         ..OrthographicProjection::default_2d()
     };
-    projection.update(SCREEN_WIDTH, SCREEN_HEIGHT);
-    let projection = Projection::Orthographic(projection);
+    world_projection.update(SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    commands.spawn((Camera2d, projection.clone()));
+    commands.spawn((Camera2d, Projection::Orthographic(world_projection)));
+
+    // UI renders at window pixel resolution so text stays crisp when resized.
+    let mut ui_projection = OrthographicProjection {
+        scaling_mode: ScalingMode::WindowSize,
+        ..OrthographicProjection::default_2d()
+    };
+    ui_projection.update(SCREEN_WIDTH, SCREEN_HEIGHT);
 
     commands.spawn((
+        UiCamera,
         Camera2d,
         Camera {
             order: 1,
             clear_color: ClearColorConfig::None,
             ..default()
         },
-        projection,
+        Projection::Orthographic(ui_projection),
         UI_LAYERS,
     ));
 }
@@ -167,7 +176,7 @@ pub fn setup_lander(
 ) {
     commands.spawn((
         LanderBody,
-        Mesh2d(meshes.add(lander_fill_mesh(&LANDER_FILL_LOCAL))),
+        Mesh2d(meshes.add(lander_fill_mesh(&LANDER_BODY_FILL))),
         MeshMaterial2d(materials.add(LANDER_FILL)),
         Transform::default(),
     ));
@@ -212,6 +221,41 @@ fn to_bevy(screen: Vec2) -> Vec2 {
     )
 }
 
+/// Map a world-camera bevy coordinate into UI-camera space (letterboxed 800×600 → window).
+fn map_world_bevy_to_ui(world_bevy: Vec2, window_w: f32, window_h: f32) -> Vec2 {
+    let scale = (window_w / SCREEN_WIDTH).min(window_h / SCREEN_HEIGHT);
+    let viewport_w = SCREEN_WIDTH * scale;
+    let viewport_h = SCREEN_HEIGHT * scale;
+    let offset_x = (window_w - viewport_w) * 0.5;
+    let offset_y = (window_h - viewport_h) * 0.5;
+
+    let screen_x = world_bevy.x + SCREEN_WIDTH * 0.5;
+    let screen_y = SCREEN_HEIGHT * 0.5 - world_bevy.y;
+
+    let px = offset_x + screen_x * scale;
+    let py = offset_y + screen_y * scale;
+
+    Vec2::new(px - window_w * 0.5, window_h * 0.5 - py)
+}
+
+fn layout_hud_lines(
+    hud_left: f32,
+    hud_top: f32,
+    hud: &mut Query<
+        (&HudLine, &mut Transform, &mut Text2d),
+        (
+            With<HudLine>,
+            Without<HudPanel>,
+            Without<StatusText>,
+            Without<StatusPanel>,
+        ),
+    >,
+) {
+    for (HudLine(i), mut transform, _) in hud {
+        transform.translation = Vec3::new(hud_left, hud_top - *i as f32 * 22.0, 1.0);
+    }
+}
+
 fn line_2d(gizmos: &mut Gizmos, a: Vec2, b: Vec2, color: Color) {
     gizmos.line_2d(to_bevy(a), to_bevy(b), color);
 }
@@ -228,6 +272,18 @@ pub fn draw_world(mut gizmos: Gizmos, game: Res<GameState>, time: Res<Time>) {
         game.status == GameStatus::Flying,
         time.elapsed_secs(),
     );
+
+    if game.status == GameStatus::Flying {
+        draw_dust_kickup(
+            &mut gizmos,
+            &game.world,
+            &game.lander,
+            &game.lander.main_thruster,
+            game.lander.throttle_main,
+            cam,
+            time.elapsed_secs(),
+        );
+    }
 }
 
 fn draw_stars(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
@@ -252,12 +308,12 @@ fn draw_star_dot(gizmos: &mut Gizmos, x: f32, y: f32, brightness: f32) {
     } else {
         STAR_DIM
     };
-    let size = 1.5 + brightness * 1.5;
+    let size = 1.0 + brightness * 1.0;
     let c = to_bevy(Vec2::new(x, y));
     line_2d(gizmos, Vec2::new(x - size, y), Vec2::new(x + size, y), color);
     line_2d(gizmos, Vec2::new(x, y - size), Vec2::new(x, y + size), color);
     if brightness > 0.85 {
-        gizmos.circle_2d(c, 1.0, color);
+        gizmos.circle_2d(c, 0.6, color);
     }
 }
 
@@ -300,7 +356,7 @@ fn is_spacing_multiple(x: f32, spacing: f32) -> bool {
 }
 
 fn crater_radius_px(x: f32, every_100: bool, every_50: bool) -> f32 {
-    let hash = ((x * 12.9898).sin() * 43758.5453).fract();
+    let hash = ((x * 12.9898).sin() * CRATER_HASH_SCALE).fract();
     let wobble = 0.85 + hash * 0.3;
 
     if every_100 {
@@ -330,6 +386,7 @@ fn terrain_frame_at(
     (rim_left, rim_right, tangent, inward)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_aligned_crater(
     gizmos: &mut Gizmos,
     rim_left: Vec2,
@@ -368,7 +425,7 @@ fn draw_distance_craters(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
     let mut x = (view_left / TERRAIN_MARKER_SPACING).floor() * TERRAIN_MARKER_SPACING;
 
     while x <= view_right {
-        if x >= 0.0 && x <= WORLD_WIDTH && !world.is_on_pad(x) {
+        if (0.0..=WORLD_WIDTH).contains(&x) && !world.is_on_pad(x) {
             let every_100 = is_spacing_multiple(x, 100.0);
             let every_50 = is_spacing_multiple(x, 50.0);
             let radius = crater_radius_px(x, every_100, every_50);
@@ -392,7 +449,7 @@ fn draw_distance_craters(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
                 DIM_GREEN
             };
 
-            let hash = ((x * 12.9898).sin() * 43758.5453).fract();
+            let hash = ((x * 12.9898).sin() * CRATER_HASH_SCALE).fract();
             let embed = 0.22 + hash * 0.12;
             let depth = 0.48 + hash * 0.1;
 
@@ -496,7 +553,7 @@ fn draw_lander(
     }
 
     let engine = world_to_screen(lander.thruster_world_positions()[0], cam);
-    let nozzle_half = 0.5 * PIXELS_PER_METER;
+    let nozzle_half = 0.22 * PIXELS_PER_METER;
     line_2d(
         gizmos,
         Vec2::new(engine.x - nozzle_half, engine.y),
@@ -508,6 +565,7 @@ fn draw_lander(
     gizmos.circle_2d(to_bevy(com), 2.0, DIM_GREEN);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_thruster_plume(
     gizmos: &mut Gizmos,
     lander: &Lander,
@@ -551,20 +609,223 @@ fn draw_thruster_plume(
     }
 }
 
+/// March along the exhaust ray until it intersects the terrain polyline.
+fn exhaust_ground_hit(
+    world: &World,
+    origin: Vec2,
+    exhaust: Vec2,
+    max_length_m: f32,
+) -> Option<Vec2> {
+    let dir = exhaust.normalize_or_zero();
+    if dir.length_squared() < 1e-8 || max_length_m <= 0.0 {
+        return None;
+    }
+
+    const STEP_M: f32 = 0.04;
+    let steps = ((max_length_m / STEP_M).ceil() as usize).max(1);
+
+    for i in 1..=steps {
+        let t = (i as f32 * STEP_M).min(max_length_m);
+        let p = origin + dir * t;
+        let ground = world.height_at(p.x);
+        if p.y >= ground {
+            return Some(Vec2::new(p.x, ground));
+        }
+    }
+
+    None
+}
+
+fn draw_dust_kickup(
+    gizmos: &mut Gizmos,
+    world: &World,
+    lander: &Lander,
+    thruster: &Thruster,
+    throttle: f32,
+    cam: Vec2,
+    elapsed: f32,
+) {
+    if throttle <= 0.0 {
+        return;
+    }
+
+    let origin = lander.thruster_world_position(thruster);
+    let exhaust = -lander.world_thrust_direction(thruster);
+
+    // Exhaust must point generally downward to reach the surface.
+    if exhaust.y <= 0.15 {
+        return;
+    }
+
+    let Some(hit) = exhaust_ground_hit(world, origin, exhaust, MAX_DUST_RAY_M) else {
+        return;
+    };
+
+    let travel = (hit - origin).length();
+    let proximity = (1.0 - travel / DUST_FALLOFF_M).clamp(0.0, 1.0);
+    let pad_scale = if world.is_on_pad(hit.x) { 0.55 } else { 1.0 };
+    let flicker = (elapsed * 18.0).sin() * 0.08 + 1.0;
+    let intensity = throttle * proximity * pad_scale * flicker;
+    if intensity < 0.08 {
+        return;
+    }
+
+    let dx = 0.5;
+    let x0 = (hit.x - dx).max(0.0);
+    let x1 = (hit.x + dx).min(WORLD_WIDTH);
+    let rim_left = world_to_screen(Vec2::new(x0, world.height_at(x0)), cam);
+    let rim_right = world_to_screen(Vec2::new(x1, world.height_at(x1)), cam);
+    let tangent = (rim_right - rim_left).normalize_or_zero();
+    let mut up = Vec2::new(-tangent.y, tangent.x);
+    if up.y > 0.0 {
+        up = -up;
+    }
+
+    let hit_screen = world_to_screen(hit, cam);
+    let zone_half_px = (0.5 + intensity * 1.4) * PIXELS_PER_METER;
+    let streak_count = (intensity * 28.0).ceil() as usize + 10;
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..streak_count {
+        let along = rng.gen_range(-zone_half_px..zone_half_px);
+        let surface_lift = rng.gen_range(0.0..0.08) * PIXELS_PER_METER;
+        let start = hit_screen + tangent * along + up * surface_lift;
+
+        let kind: u8 = rng.gen_range(0..10);
+        let (dir, len_m, color) = if kind < 4 {
+            // Low surface spray along the ground, both directions.
+            let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
+            let dir = (tangent * sign + up * rng.gen_range(0.08..0.22)).normalize_or_zero();
+            let len_m = rng.gen_range(0.6..2.2) * intensity;
+            (dir, len_m, if rng.gen_bool(0.4) { GREEN } else { DIM_GREEN })
+        } else if kind < 7 {
+            // Lofted kick-up — steep rise with sideways drift.
+            let dir = (up * rng.gen_range(0.55..1.0) + tangent * rng.gen_range(-0.65..0.65))
+                .normalize_or_zero();
+            let len_m = rng.gen_range(1.0..3.2) * intensity;
+            (
+                dir,
+                len_m,
+                if rng.gen_bool(0.35) {
+                    DUST_BRIGHT
+                } else {
+                    BRIGHT_GREEN
+                },
+            )
+        } else {
+            // Billowing arc: up then shear with the surface tangent.
+            let rise = (up * rng.gen_range(0.45..0.85) + tangent * rng.gen_range(-0.35..0.35))
+                .normalize_or_zero();
+            let len_m = rng.gen_range(0.8..2.4) * intensity;
+            let mid_m = len_m * rng.gen_range(0.35..0.55);
+            let end_m = len_m - mid_m;
+            let mid = start + rise * mid_m * PIXELS_PER_METER;
+            let shear = (tangent * rng.gen_range(-0.9..0.9) + up * rng.gen_range(0.1..0.35))
+                .normalize_or_zero();
+            let end = mid + shear * end_m * PIXELS_PER_METER;
+            line_2d(gizmos, start, mid, GREEN);
+            line_2d(gizmos, mid, end, DUST_DIM);
+            continue;
+        };
+
+        if dir.length_squared() < 1e-6 {
+            continue;
+        }
+
+        let end = start + dir * len_m * PIXELS_PER_METER;
+        line_2d(gizmos, start, end, color);
+    }
+}
+
+#[cfg(test)]
+mod dust_tests {
+    use super::*;
+    use glam::Vec2;
+
+    #[test]
+    fn exhaust_ray_finds_ground_below_nozzle() {
+        let world = World::generate(42);
+        let x = 120.0;
+        let ground_y = world.height_at(x);
+        let origin = Vec2::new(x, ground_y - 4.0);
+        let hit = exhaust_ground_hit(&world, origin, Vec2::new(0.0, 1.0), MAX_DUST_RAY_M);
+        let hit = hit.expect("exhaust should hit terrain");
+        assert!((hit.y - ground_y).abs() < 0.15);
+    }
+
+    #[test]
+    fn short_plume_ray_misses_ground_that_long_ray_reaches() {
+        let world = World::generate(42);
+        let x = 120.0;
+        let ground_y = world.height_at(x);
+        let origin = Vec2::new(x, ground_y - 4.0);
+        assert!(exhaust_ground_hit(&world, origin, Vec2::new(0.0, 1.0), 2.8).is_none());
+        assert!(exhaust_ground_hit(&world, origin, Vec2::new(0.0, 1.0), MAX_DUST_RAY_M).is_some());
+    }
+}
+
+#[allow(clippy::type_complexity)]
 pub fn update_hud(
     time: Res<Time>,
     mut fps_smooth: Local<Option<f32>>,
     game: Res<GameState>,
-    mut hud: Query<(&HudLine, &mut Text2d), Without<StatusText>>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    mut hud_panel: Query<
+        &mut Transform,
+        (
+            With<HudPanel>,
+            Without<HudLine>,
+            Without<StatusText>,
+            Without<StatusPanel>,
+        ),
+    >,
+    mut hud: Query<
+        (&HudLine, &mut Transform, &mut Text2d),
+        (
+            With<HudLine>,
+            Without<HudPanel>,
+            Without<StatusText>,
+            Without<StatusPanel>,
+        ),
+    >,
     mut status: Query<
         (&mut Text2d, &mut Transform, &mut Visibility),
-        (With<StatusText>, Without<StatusPanel>),
+        (
+            With<StatusText>,
+            Without<StatusPanel>,
+            Without<HudLine>,
+            Without<HudPanel>,
+        ),
     >,
     mut status_panel: Query<
         (&mut Transform, &mut Visibility),
-        (With<StatusPanel>, Without<StatusText>),
+        (
+            With<StatusPanel>,
+            Without<StatusText>,
+            Without<HudLine>,
+            Without<HudPanel>,
+        ),
     >,
 ) {
+    let Ok(window) = window.get_single() else {
+        return;
+    };
+    let window_w = window.width();
+    let window_h = window.height();
+
+    let hud_left = -window_w * 0.5 + HUD_MARGIN;
+    let hud_top = window_h * 0.5 - HUD_MARGIN;
+
+    if let Ok(mut panel) = hud_panel.get_single_mut() {
+        panel.translation = Vec3::new(
+            hud_left - HUD_BG_PAD + HUD_BG_WIDTH * 0.5,
+            hud_top + HUD_BG_PAD - HUD_BG_HEIGHT * 0.5,
+            0.0,
+        );
+    }
+
+    layout_hud_lines(hud_left, hud_top, &mut hud);
+
     let alt = game.world.clearance_above_terrain(&game.lander.hull_world);
     let vy = game.lander.body.vel.y;
     let vx = game.lander.body.vel.x;
@@ -592,16 +853,18 @@ pub fn update_hud(
         format!("FPS  {:>6.0}", fps),
     ];
 
-    for (HudLine(i), mut text) in &mut hud {
+    for (HudLine(i), _, mut text) in &mut hud {
         if let Some(line) = lines.get(*i) {
             text.0 = line.clone();
         }
     }
 
-    let status_y = status_y_below_horizon(&game);
+    let status_world_y = status_y_below_horizon(&game);
+    let status_ui = map_world_bevy_to_ui(Vec2::new(0.0, status_world_y), window_w, window_h);
 
     if let Ok((mut text, mut transform, mut vis)) = status.get_single_mut() {
-        transform.translation.y = status_y;
+        transform.translation.x = status_ui.x;
+        transform.translation.y = status_ui.y;
 
         match game.status {
             GameStatus::Flying => {
@@ -619,7 +882,8 @@ pub fn update_hud(
     }
 
     if let Ok((mut transform, mut vis)) = status_panel.get_single_mut() {
-        transform.translation.y = status_y;
+        transform.translation.x = status_ui.x;
+        transform.translation.y = status_ui.y;
         *vis = if game.status == GameStatus::Flying {
             Visibility::Hidden
         } else {

@@ -191,9 +191,11 @@ pub fn compute_thrust(
     }
 
     let raw_target = (vx_err * pitch_gain).clamp(-max_pitch, max_pitch);
-    let pitch_smooth = if range < 120.0 || vx_err.abs() > 2.5 || vel.x.abs() > 4.0 {
-        1.0
-    } else if range > 80.0 && alt > 35.0 {
+    let pitch_smooth = if range < 120.0
+        || vx_err.abs() > 2.5
+        || vel.x.abs() > 4.0
+        || (range > 80.0 && alt > 35.0)
+    {
         1.0
     } else {
         PITCH_SMOOTH

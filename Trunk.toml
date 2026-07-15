@@ -2,6 +2,7 @@
 public_url = "/lunar/"
 dist = "dist"
 filehash = true
+features = ["web"]
 
 [serve]
 no_spa = true

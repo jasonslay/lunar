@@ -107,7 +107,7 @@ impl GameState {
         let mut game = Self::new(seed);
         game.status = GameStatus::Landed;
         game.lander.body.pos.x = game.world.pad_center_x;
-        game.lander.body.pos.y = game.world.pad_y - 2.5;
+        game.lander.body.pos.y = game.world.pad_y - 1.6;
         game.lander.body.vel = Vec2::ZERO;
         game.lander.body.angle = 0.0;
         game.lander.body.angular_vel = 0.0;

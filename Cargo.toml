@@ -10,6 +10,9 @@ crate-type = ["rlib"]
 name = "lunar"
 path = "src/main.rs"
 
+[features]
+web = ["bevy/webgl2"]
+
 [dependencies]
 bevy = { version = "0.15", default-features = false, features = [
     "bevy_asset",
@@ -24,7 +27,6 @@ bevy = { version = "0.15", default-features = false, features = [
     "default_font",
     "multi_threaded",
     "png",
-    "webgl2",
     "x11",
     "wayland",
 ] }
