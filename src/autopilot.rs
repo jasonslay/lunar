@@ -229,6 +229,7 @@ pub fn compute_thrust(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::{GameState, GameStatus};
     use crate::physics::{sum_thrusters, PHYSICS_DT};
     use crate::world::{World, WORLD_WIDTH};
 
@@ -445,6 +446,22 @@ mod tests {
             result.steps,
         );
         assert!(world.is_on_pad(result.pos.x));
+    }
+
+    #[test]
+    fn autopilot_screenshot_pose_is_inflight_near_pad() {
+        let mut game = GameState::new(42);
+        game.simulate_autopilot_until(|game| {
+            let dx = (game.world.pad_center_x - game.lander.body.pos.x).abs();
+            let alt = game.world.clearance_above_terrain(&game.lander.hull_world);
+            dx < 28.0 && alt < 16.0 && alt > 5.0
+        });
+
+        assert_eq!(game.status, GameStatus::Flying);
+        assert!(game.autopilot);
+        let alt = game.world.clearance_above_terrain(&game.lander.hull_world);
+        assert!(alt > 5.0 && alt < 16.0, "expected final approach altitude, got {alt}");
+        assert!(game.lander.throttle_main > 0.1, "expected main engine firing on approach");
     }
 
     #[test]

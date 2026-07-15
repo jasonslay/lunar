@@ -36,11 +36,11 @@ pub fn configure(app: &mut App) {
 pub fn apply_scene(mut game: ResMut<GameState>) {
     match std::env::var("LUNAR_SCENE").as_deref() {
         Ok("autopilot") => {
-            let steps = std::env::var("LUNAR_WARMUP_STEPS")
-                .ok()
-                .and_then(|value| value.parse().ok())
-                .unwrap_or(4_200);
-            game.simulate_physics(steps, true);
+            game.simulate_autopilot_until(|game| {
+                let dx = (game.world.pad_center_x - game.lander.body.pos.x).abs();
+                let alt = game.world.clearance_above_terrain(&game.lander.hull_world);
+                dx < 28.0 && alt < 16.0 && alt > 5.0
+            });
         }
         Ok("landed") => {
             *game = GameState::landed_demo(game.seed);

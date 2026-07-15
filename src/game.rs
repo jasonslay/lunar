@@ -20,7 +20,7 @@ const MAX_LANDING_ANGLE: f32 = 15.0_f32.to_radians();
 const MAX_FRAME_DT: f32 = 0.05;
 const MAX_PHYSICS_STEPS_PER_FRAME: usize = 4;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum GameStatus {
     Flying,
     Landed,
@@ -84,15 +84,19 @@ impl GameState {
         *self = Self::new(self.seed);
     }
 
-    pub fn simulate_physics(&mut self, steps: usize, autopilot: bool) {
-        self.autopilot = autopilot;
-        if autopilot {
-            self.autopilot_smoothed_pitch = self.lander.body.angle;
-        }
+    pub fn simulate_autopilot_until<F>(&mut self, mut stop: F)
+    where
+        F: FnMut(&Self) -> bool,
+    {
+        self.autopilot = true;
+        self.autopilot_smoothed_pitch = self.lander.body.angle;
 
         let input = ThrustInput::default();
-        for _ in 0..steps {
+        for _ in 0..20_000 {
             if self.status != GameStatus::Flying {
+                break;
+            }
+            if stop(self) {
                 break;
             }
             physics_step(self, &input);

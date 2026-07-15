@@ -15,9 +15,9 @@ A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org
 
 ## Screenshots
 
-| Approach | Autopilot landing | Safe touchdown |
+| Downrange approach | Final approach (autopilot) | Safe touchdown |
 |----------|-------------------|----------------|
-| ![Approach](docs/screenshots/approach.png) | ![Autopilot](docs/screenshots/autopilot.png) | ![Landed](docs/screenshots/landed.png) |
+| ![Approach](docs/screenshots/approach.png) | ![Autopilot final approach with main engine firing](docs/screenshots/autopilot.png) | ![Landed on pad](docs/screenshots/landed.png) |
 
 ## Requirements
 
