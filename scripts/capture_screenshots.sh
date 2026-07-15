@@ -24,3 +24,4 @@ LUNAR_SCREENSHOT_FRAME=90 \
 "$BIN"
 
 echo "Screenshots written to docs/screenshots/"
+echo "Note: screenshot capture requires the native binary (not WASM)."

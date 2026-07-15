@@ -1,0 +1,9 @@
+[build]
+public_url = "/lunar/"
+dist = "dist"
+filehash = true
+
+[serve]
+no_spa = true
+addresses = ["127.0.0.1"]
+port = 8080

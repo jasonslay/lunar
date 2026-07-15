@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lunar Lander</title>
+    <link data-trunk rel="css" href="web/style.css" />
+    <link data-trunk rel="rust" data-bin="lunar" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="header">
+        <h1>Lunar Lander</h1>
+        <p>
+          Arrow keys / WASD / Space to fly. <kbd>P</kbd> autopilot,
+          <kbd>R</kbd> reset, <kbd>N</kbd> new terrain.
+        </p>
+      </header>
+      <div id="game-shell" class="game-shell">
+        <canvas id="bevy_canvas"></canvas>
+      </div>
+    </main>
+  </body>
+</html>

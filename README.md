@@ -21,14 +21,36 @@ A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org
 
 ## Requirements
 
-- Rust 1.85+ (edition 2024)
-- A GPU with Vulkan, Metal, or DX12 support (Bevy default backends)
+- **Native:** Rust 1.85+ (edition 2024), GPU with Vulkan/Metal/DX12
+- **Web:** A modern browser with WebGL2 (no install required)
 
 ## Run
+
+### Native
 
 ```bash
 cargo run --release
 ```
+
+### Web (local)
+
+```bash
+# Install once
+rustup target add wasm32-unknown-unknown
+cargo install trunk --locked --version 0.20.3
+
+# Build or serve (use --release; dev builds are slow)
+NO_COLOR=false trunk build --release
+NO_COLOR=false trunk serve --release
+```
+
+Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
+
+### Play online
+
+After GitHub Pages is enabled for this repo, the game is published at:
+
+**https://jasonslay.github.io/lunar/**
 
 ## Controls
 
@@ -53,14 +75,17 @@ A safe landing requires:
 ## Development
 
 ```bash
-# Debug build
+# Debug build (native)
 cargo build
 
 # Run tests (autopilot simulation + world checks)
 cargo test
 
-# Release build
+# Release build (native)
 cargo build --release
+
+# Web release bundle (output in dist/)
+trunk build --release
 ```
 
 ### Regenerating screenshots
@@ -75,7 +100,8 @@ This uses the built-in screenshot helper (`LUNAR_SCREENSHOT`, `LUNAR_SCENE`) to 
 
 ```
 src/
-  main.rs       — App setup and system scheduling
+  lib.rs        — Shared App builder (native + WASM)
+  main.rs       — Native binary entry
   game.rs       — Game state, physics loop, landing detection
   physics.rs    — Rigid-body integration, thruster forces
   lander.rs     — Lander geometry and thruster layout
@@ -83,7 +109,10 @@ src/
   autopilot.rs  — Guided descent controller + simulation tests
   render.rs     — Gizmo world draw, HUD, solid lander mesh
   input.rs      — Keyboard mapping
-  screenshot.rs — Optional screenshot capture for docs
+  screenshot.rs — Native-only screenshot capture for docs
+index.html      — Standalone web page shell
+Trunk.toml      — WASM build and GitHub Pages config
+web/style.css   — Page styling around the game canvas
 ```
 
 ## License
