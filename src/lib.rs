@@ -24,6 +24,8 @@ fn window_plugin() -> WindowPlugin {
         primary_window: Some(Window {
             title: "Lunar Lander".into(),
             resolution: WindowResolution::new(SCREEN_WIDTH, SCREEN_HEIGHT),
+            #[cfg(target_arch = "wasm32")]
+            canvas: Some("#bevy_canvas".into()),
             ..default()
         }),
         ..default()
