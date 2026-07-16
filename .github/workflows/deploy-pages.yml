@@ -30,9 +30,7 @@ jobs:
         run: cargo install trunk --locked --version 0.20.3
 
       - name: Build web bundle
-        run: NO_COLOR=false trunk build --release
-        env:
-          NO_COLOR: false
+        run: env -u NO_COLOR trunk build --release
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
