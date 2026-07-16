@@ -48,8 +48,6 @@ Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
 
 ### Play online
 
-After GitHub Pages is enabled for this repo, the game is published at:
-
 **https://jasonslay.github.io/lunar/**
 
 ## Controls
