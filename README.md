@@ -117,4 +117,4 @@ web/style.css   — Page styling around the game canvas
 
 ## License
 
-Private repository — all rights reserved.
+MIT — see [LICENSE](LICENSE).
