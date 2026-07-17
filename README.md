@@ -52,6 +52,8 @@ Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
 
 Also published on GitHub Pages: https://jasonslay.github.io/lunar/
 
+Each deploy to `main` refreshes the rolling GitHub Release tag [`web`](https://github.com/jasonslay/lunar/releases/tag/web) (`lunar-web.tar.gz`), which [jtslay.com](https://jtslay.com) downloads for `/lunar/`.
+
 ## Controls
 
 | Key | Action |

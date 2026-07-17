@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -31,6 +31,28 @@ jobs:
 
       - name: Build web bundle
         run: env -u NO_COLOR trunk build --release
+
+      - name: Package web release
+        run: tar -C dist -czf lunar-web.tar.gz .
+
+      # Rolling tag `web` — jtslay.com downloads this instead of compiling WASM.
+      - name: Publish web release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes="Web build from \`${GITHUB_SHA}\`.
+
+          Asset \`lunar-web.tar.gz\` is consumed by [jtslay.com](https://jtslay.com/lunar/)."
+          if gh release view web >/dev/null 2>&1; then
+            gh release upload web lunar-web.tar.gz --clobber
+            gh release edit web --target "${GITHUB_SHA}" --notes "${notes}"
+          else
+            gh release create web lunar-web.tar.gz \
+              --title "Web build" \
+              --notes "${notes}" \
+              --target "${GITHUB_SHA}" \
+              --latest=false
+          fi
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
