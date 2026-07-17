@@ -48,7 +48,9 @@ Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
 
 ### Play online
 
-**https://jasonslay.github.io/lunar/**
+**https://jtslay.com/lunar/**
+
+Also published on GitHub Pages: https://jasonslay.github.io/lunar/
 
 ## Controls
 
