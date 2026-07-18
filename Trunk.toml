@@ -8,7 +8,7 @@ no_sri = true
 
 [[hooks]]
 stage = "post_build"
-command = "sh"
+command = "bash"
 command_arguments = ["scripts/patch-web-build.sh"]
 
 [serve]
