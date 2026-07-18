@@ -14,6 +14,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  TRUNK_VERSION: "0.21.14"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,9 +28,24 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: web-wasm
+          cache-all-crates: "true"
+          cache-on-failure: true
+
+      - name: Cache trunk tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trunk
+          key: trunk-tools-${{ runner.os }}-${{ env.TRUNK_VERSION }}
 
       - name: Install trunk
-        run: cargo install trunk --locked --version 0.21.14
+        run: |
+          curl -fsSL -o /tmp/trunk.tar.gz \
+            "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz"
+          tar xzf /tmp/trunk.tar.gz -C /tmp
+          install -m 755 /tmp/trunk "$CARGO_HOME/bin/trunk"
+          trunk --version
 
       - name: Build web bundle
         run: env -u NO_COLOR trunk build --release
