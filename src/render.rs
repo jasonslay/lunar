@@ -24,6 +24,7 @@ const DUST_DIM: Color = Color::srgb(0.12, 0.42, 0.22);
 const MAX_DUST_RAY_M: f32 = 28.0;
 /// Dust fades in as the nozzle gets within this distance of the impact point.
 const DUST_FALLOFF_M: f32 = 20.0;
+const DUST_LENGTH_SCALE: f32 = 2.0;
 const STAR_DIM: Color = Color::srgb(0.7, 0.85, 1.0);
 const STAR_BRIGHT: Color = Color::srgb(1.0, 1.0, 1.0);
 const SKY_TOP: f32 = 4.0;
@@ -731,13 +732,13 @@ fn draw_dust_kickup(
             // Low surface spray along the ground, both directions.
             let sign = if rng.gen_bool(0.5) { 1.0 } else { -1.0 };
             let dir = (tangent * sign + up * rng.gen_range(0.08..0.22)).normalize_or_zero();
-            let len_m = rng.gen_range(0.6..2.2) * intensity;
+            let len_m = rng.gen_range(0.6..2.2) * intensity * DUST_LENGTH_SCALE;
             (dir, len_m, if rng.gen_bool(0.4) { GREEN } else { DIM_GREEN })
         } else if kind < 7 {
             // Lofted kick-up — steep rise with sideways drift.
             let dir = (up * rng.gen_range(0.55..1.0) + tangent * rng.gen_range(-0.65..0.65))
                 .normalize_or_zero();
-            let len_m = rng.gen_range(1.0..3.2) * intensity;
+            let len_m = rng.gen_range(1.0..3.2) * intensity * DUST_LENGTH_SCALE;
             (
                 dir,
                 len_m,
@@ -751,7 +752,7 @@ fn draw_dust_kickup(
             // Billowing arc: up then shear with the surface tangent.
             let rise = (up * rng.gen_range(0.45..0.85) + tangent * rng.gen_range(-0.35..0.35))
                 .normalize_or_zero();
-            let len_m = rng.gen_range(0.8..2.4) * intensity;
+            let len_m = rng.gen_range(0.8..2.4) * intensity * DUST_LENGTH_SCALE;
             let mid_m = len_m * rng.gen_range(0.35..0.55);
             let end_m = len_m - mid_m;
             let mid = start + rise * mid_m * PIXELS_PER_METER;
