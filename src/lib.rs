@@ -26,6 +26,8 @@ fn window_plugin() -> WindowPlugin {
             resolution: WindowResolution::new(SCREEN_WIDTH, SCREEN_HEIGHT),
             #[cfg(target_arch = "wasm32")]
             canvas: Some("#bevy_canvas".into()),
+            #[cfg(target_arch = "wasm32")]
+            fit_canvas_to_parent: true,
             ..default()
         }),
         ..default()
