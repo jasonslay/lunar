@@ -10,7 +10,16 @@ pub const PAD_REGION_FRAC: f32 = 0.35;
 pub const SCREEN_WIDTH: f32 = 800.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
 pub const VIEW_WIDTH: f32 = SCREEN_WIDTH / PIXELS_PER_METER;
-pub const WORLD_WIDTH: f32 = 700.0;
+/// Downrange edge of the map (spawn side).
+pub const WORLD_WIDTH: f32 = 760.0;
+/// Extra playable runway west of the landing pad for overshoot recovery.
+pub const PAST_TARGET_WIDTH: f32 = 50.0;
+pub const WORLD_MIN_X: f32 = -PAST_TARGET_WIDTH;
+/// Terrain extends past playable bounds so the surface line fills the viewport.
+pub const MAP_EDGE_BLEED_LEFT: f32 = 20.0;
+pub const MAP_EDGE_BLEED_RIGHT: f32 = 40.0;
+pub const TERRAIN_MIN_X: f32 = WORLD_MIN_X - MAP_EDGE_BLEED_LEFT;
+pub const TERRAIN_MAX_X: f32 = WORLD_WIDTH + MAP_EDGE_BLEED_RIGHT;
 pub const WORLD_HEIGHT: f32 = SCREEN_HEIGHT / PIXELS_PER_METER;
 pub const TERRAIN_MARKER_SPACING: f32 = 10.0;
 pub const STAR_COUNT: usize = 350;
@@ -47,12 +56,19 @@ impl World {
 
     pub fn generate(seed: u64) -> Self {
         let mut terrain = Vec::with_capacity(TERRAIN_POINTS + 1);
-        let step = WORLD_WIDTH / TERRAIN_POINTS as f32;
+        let span = TERRAIN_MAX_X - TERRAIN_MIN_X;
+        let step = span / TERRAIN_POINTS as f32;
         let base_y = WORLD_HEIGHT - 10.0;
 
         for i in 0..=TERRAIN_POINTS {
-            let x = i as f32 * step;
-            let t = x / WORLD_WIDTH;
+            let x = if i == 0 {
+                TERRAIN_MIN_X
+            } else if i == TERRAIN_POINTS {
+                TERRAIN_MAX_X
+            } else {
+                TERRAIN_MIN_X + i as f32 * step
+            };
+            let t = (x - TERRAIN_MIN_X) / span;
 
             let h = base_y
                 - 3.75 * (t * 4.0 * std::f32::consts::PI + seed as f32 * 0.01).sin()
@@ -62,23 +78,19 @@ impl World {
             terrain.push(Vec2::new(x, h));
         }
 
-        let mut best_idx = 0;
-        let mut best_y = f32::INFINITY;
-        let margin = (PAD_WIDTH / step) as usize + 2;
-        let search_end = ((TERRAIN_POINTS as f32) * PAD_REGION_FRAC) as usize;
-        let search_span = search_end.saturating_sub(margin);
-        for (i, point) in terrain.iter().enumerate().skip(margin).take(search_span) {
-            if point.y < best_y {
-                best_y = point.y;
-                best_idx = i;
+        let search_min_x = 8.0;
+        let search_max_x = WORLD_WIDTH * PAD_REGION_FRAC;
+        let mut pad_center_x = search_min_x;
+        let mut pad_y = f32::INFINITY;
+        for point in &terrain {
+            if point.x >= search_min_x && point.x <= search_max_x && point.y < pad_y {
+                pad_y = point.y;
+                pad_center_x = point.x;
             }
         }
-
-        let pad_center_x = terrain[best_idx].x;
         let pad_half = PAD_WIDTH / 2.0;
         let pad_start_x = pad_center_x - pad_half;
         let pad_end_x = pad_center_x + pad_half;
-        let pad_y = best_y;
 
         for point in terrain.iter_mut() {
             if point.x >= pad_start_x && point.x <= pad_end_x {

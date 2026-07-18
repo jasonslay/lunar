@@ -8,10 +8,83 @@
     <link data-trunk rel="copy-file" href="web/controls.js" />
     <link data-trunk rel="rust" data-bin="lunar" />
   </head>
-  <body>
+  <body style="background:#0a0a0a;color:#8cff9a;margin:0;">
+    <script>
+      (function () {
+        window.lunarIsControlFlowException = function (value) {
+          var msg = String(
+            value && (value.message || value.reason || value) ? (value.message || value.reason || value) : value
+          );
+          return msg.indexOf("Using exceptions for control flow") !== -1;
+        };
+
+        window.lunarShowBootError = function (message) {
+          if (window.lunarIsControlFlowException(message)) {
+            document.getElementById("boot-status")?.setAttribute("hidden", "");
+            return;
+          }
+          var el = document.getElementById("boot-status");
+          if (!el) {
+            el = document.createElement("div");
+            el.id = "boot-status";
+            el.setAttribute("aria-live", "polite");
+            el.style.cssText =
+              "position:fixed;inset:0;padding:1.5rem;background:#1a0000;color:#ff8888;font:16px/1.5 monospace;z-index:999999;overflow:auto;white-space:pre-wrap;";
+            document.documentElement.appendChild(el);
+          }
+          el.removeAttribute("hidden");
+          el.textContent = "Boot error:\n" + message;
+        };
+
+        (function () {
+          var boot = document.getElementById("boot-status");
+          if (boot) {
+            boot.removeAttribute("hidden");
+            boot.textContent = "Loading Lunar Lander…";
+            boot.style.cssText =
+              "padding:1rem;font:16px/1.5 monospace;background:#102016;border-bottom:1px solid #2d6b3c;color:#8cff9a;";
+          }
+        })();
+
+        window.addEventListener("error", function (event) {
+          if (window.lunarIsControlFlowException(event.error || event.message)) {
+            document.getElementById("boot-status")?.setAttribute("hidden", "");
+            return;
+          }
+          window.lunarShowBootError(
+            (event.message || event.error || "unknown") +
+              (event.filename ? "\n" + event.filename + ":" + event.lineno : "")
+          );
+        });
+
+        window.addEventListener("unhandledrejection", function (event) {
+          if (window.lunarIsControlFlowException(event.reason)) {
+            document.getElementById("boot-status")?.setAttribute("hidden", "");
+            return;
+          }
+          window.lunarShowBootError(String(event.reason));
+        });
+
+        if (!document.exitPointerLock) {
+          document.exitPointerLock = function () {};
+        }
+        if (!Element.prototype.requestPointerLock) {
+          Element.prototype.requestPointerLock = function () {};
+        }
+        if (!document.exitFullscreen) {
+          document.exitFullscreen = function () {};
+        }
+        if (!document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen = function () {
+            return Promise.resolve();
+          };
+        }
+      })();
+    </script>
+    <div id="boot-status" aria-live="polite" hidden></div>
     <main class="page">
       <header class="header">
-        <h1>Lunar Lander</h1>
+        <h1 class="header-title" aria-label="Lunar Lander"></h1>
         <p class="controls-desktop">
           Arrow keys / WASD / Space to fly. <kbd>P</kbd> autopilot,
           <kbd>R</kbd> reset, <kbd>N</kbd> new terrain.
@@ -26,23 +99,53 @@
       </div>
       <div id="touch-controls" class="touch-controls" aria-label="Touch controls">
         <div class="touch-row touch-row--fly">
-          <button type="button" class="touch-btn touch-btn--thrust" data-thrust="left" aria-label="Tilt left">
-            ◀
-          </button>
-          <button type="button" class="touch-btn touch-btn--thrust touch-btn--main" data-thrust="main" aria-label="Main engine">
-            ▲
-          </button>
-          <button type="button" class="touch-btn touch-btn--thrust" data-thrust="right" aria-label="Tilt right">
-            ▶
-          </button>
+          <div
+            class="touch-btn touch-btn--thrust touch-btn--left"
+            role="button"
+            tabindex="0"
+            data-thrust="left"
+            aria-label="Tilt left"
+          ></div>
+          <div
+            class="touch-btn touch-btn--thrust touch-btn--main"
+            role="button"
+            tabindex="0"
+            data-thrust="main"
+            aria-label="Main engine"
+          ></div>
+          <div
+            class="touch-btn touch-btn--thrust touch-btn--right"
+            role="button"
+            tabindex="0"
+            data-thrust="right"
+            aria-label="Tilt right"
+          ></div>
         </div>
         <div class="touch-row touch-row--actions">
-          <button type="button" class="touch-btn touch-btn--action" data-action="autopilot">AP</button>
-          <button type="button" class="touch-btn touch-btn--action" data-action="reset">R</button>
-          <button type="button" class="touch-btn touch-btn--action" data-action="new">N</button>
+          <div
+            class="touch-btn touch-btn--action"
+            role="button"
+            tabindex="0"
+            data-action="autopilot"
+            aria-label="Autopilot"
+          ></div>
+          <div
+            class="touch-btn touch-btn--action"
+            role="button"
+            tabindex="0"
+            data-action="reset"
+            aria-label="Reset"
+          ></div>
+          <div
+            class="touch-btn touch-btn--action"
+            role="button"
+            tabindex="0"
+            data-action="new"
+            aria-label="New terrain"
+          ></div>
         </div>
       </div>
     </main>
-    <script src="controls.js"></script>
+    <script src="/lunar/controls.js?v=3"></script>
   </body>
 </html>

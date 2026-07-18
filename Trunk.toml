@@ -3,8 +3,15 @@ public_url = "/lunar/"
 dist = "dist"
 filehash = true
 features = "web"
+no_default_features = true
+no_sri = true
+
+[[hooks]]
+stage = "post_build"
+command = "sh"
+command_arguments = ["scripts/patch-web-build.sh"]
 
 [serve]
 no_spa = true
-addresses = ["127.0.0.1"]
+addresses = ["0.0.0.0"]
 port = 8080

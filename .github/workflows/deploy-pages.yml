@@ -27,7 +27,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Install trunk
-        run: cargo install trunk --locked --version 0.20.3
+        run: cargo install trunk --locked --version 0.21.14
 
       - name: Build web bundle
         run: env -u NO_COLOR trunk build --release

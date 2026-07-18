@@ -233,7 +233,7 @@ mod tests {
     use super::*;
     use crate::game::{GameState, GameStatus};
     use crate::physics::{sum_thrusters, PHYSICS_DT};
-    use crate::world::{World, WORLD_WIDTH};
+    use crate::world::{World, WORLD_MIN_X, WORLD_WIDTH};
 
     fn autopilot_physics_step(lander: &mut Lander, world: &World, smoothed_pitch: &mut f32) {
         let (main, tilt_left, tilt_right) = compute_thrust(lander, world, smoothed_pitch);
@@ -395,7 +395,7 @@ mod tests {
             "climbed too high: {max_alt} m"
         );
         assert!(
-            min_x >= 0.0,
+            min_x >= WORLD_MIN_X,
             "overshot left edge: min_x={min_x}"
         );
     }
@@ -427,7 +427,7 @@ mod tests {
         }
 
         assert!(max_alt < 120.0, "delayed AP climbed too high: {max_alt}");
-        assert!(min_x >= 0.0, "delayed AP overshot left: min_x={min_x}");
+        assert!(min_x >= WORLD_MIN_X, "delayed AP overshot left: min_x={min_x}");
     }
 
     #[test]

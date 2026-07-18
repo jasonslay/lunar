@@ -37,7 +37,7 @@ cargo run --release
 ```bash
 # Install once
 rustup target add wasm32-unknown-unknown
-cargo install trunk --locked --version 0.20.3
+cargo install trunk --locked --version 0.21.14
 
 # Build or serve (use --release; dev builds are slow)
 NO_COLOR=false trunk build --release

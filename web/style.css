@@ -82,12 +82,24 @@ canvas {
   display: none;
   width: var(--game-width);
   gap: 0.75rem;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.touch-controls * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
 .touch-row {
   display: grid;
   gap: 0.75rem;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .touch-row--fly {
@@ -99,6 +111,9 @@ canvas {
 }
 
 .touch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 3.75rem;
   border: 1px solid #2d6b3c;
   border-radius: 0.5rem;
@@ -108,8 +123,42 @@ canvas {
   font-size: 1.1rem;
   font-weight: 600;
   letter-spacing: 0.06em;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   touch-action: none;
   cursor: pointer;
+}
+
+.touch-btn::before {
+  display: block;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touch-btn--left::before {
+  content: "◀";
+}
+
+.touch-btn--main::before {
+  content: "▲";
+}
+
+.touch-btn--right::before {
+  content: "▶";
+}
+
+.touch-btn[data-action="autopilot"]::before {
+  content: "AP";
+}
+
+.touch-btn[data-action="reset"]::before {
+  content: "R";
+}
+
+.touch-btn[data-action="new"]::before {
+  content: "N";
 }
 
 .touch-btn--main {
@@ -124,23 +173,72 @@ canvas {
   box-shadow: inset 0 0 12px rgba(32, 255, 100, 0.15);
 }
 
+.header-title::before {
+  content: "Lunar Lander";
+}
+
 @media (hover: none) and (pointer: coarse) {
+  .header {
+    display: none;
+  }
+
+  html,
+  body,
+  *,
+  *::before,
+  *::after {
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    user-select: none !important;
+  }
+
+  html {
+    touch-action: none;
+    overflow: hidden;
+    height: 100%;
+  }
+
+  body {
+    touch-action: none;
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+  }
+
+  ::selection {
+    background: transparent;
+  }
+
   .controls-desktop {
     display: none;
   }
 
   .controls-mobile {
-    display: block;
+    display: none;
   }
 
   .touch-controls {
     display: flex;
     flex-direction: column;
+    position: relative;
+    z-index: 2;
+    isolation: isolate;
   }
 
   .page {
     justify-content: flex-start;
     padding-top: 1rem;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  html.lunar-thrust-active,
+  html.lunar-thrust-active * {
+    -webkit-user-select: none !important;
+    user-select: none !important;
   }
 
   :root {

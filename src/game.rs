@@ -5,11 +5,11 @@ use crate::autopilot;
 use crate::input::{thrust_from_input, ThrustInput};
 use crate::lander::{Lander, FUEL_BURN_RATE, FUEL_CAPACITY};
 use crate::physics::{sum_thrusters, PHYSICS_DT};
-use crate::world::{World, WORLD_HEIGHT, WORLD_WIDTH};
+use crate::world::{World, WORLD_HEIGHT, WORLD_WIDTH, TERRAIN_MAX_X, TERRAIN_MIN_X, VIEW_WIDTH};
 
 const SPAWN_ALTITUDE: f32 = 50.0;
 const MIN_SPAWN_Y: f32 = 12.0;
-const SPAWN_DOWNRANGE: f32 = 480.0;
+const SPAWN_DOWNRANGE: f32 = 520.0;
 const INITIAL_ORBITAL_SPEED: f32 = 18.0;
 const INITIAL_DESCENT_VY: f32 = 2.5;
 const ORBITAL_STEER_RATE: f32 = 1.2;
@@ -121,17 +121,15 @@ impl GameState {
     }
 
     pub fn camera_offset(&self) -> Vec2 {
-        let view_width_m = crate::world::VIEW_WIDTH;
+        let view_width_m = VIEW_WIDTH;
         let view_height_m = crate::world::SCREEN_HEIGHT / crate::physics::PIXELS_PER_METER;
         let lander_x = self.lander.body.pos.x;
         let lander_y = self.lander.body.pos.y;
 
         let mut cam_x = lander_x - view_width_m * 0.5;
-        cam_x = cam_x.max(0.0);
-        let max_cam_x = (WORLD_WIDTH - view_width_m).max(0.0);
-        if lander_x <= WORLD_WIDTH - view_width_m * 0.5 {
-            cam_x = cam_x.min(max_cam_x);
-        }
+        let min_cam_x = TERRAIN_MIN_X;
+        let max_cam_x = (TERRAIN_MAX_X - view_width_m).max(min_cam_x);
+        cam_x = cam_x.clamp(min_cam_x, max_cam_x);
 
         let mut cam_y = lander_y - view_height_m * 0.35;
         let max_y = (self.world.pad_y - view_height_m * 0.65).max(0.0);
@@ -226,12 +224,19 @@ fn physics_step(game: &mut GameState, input: &ThrustInput) {
         resolve_landing(game);
     }
 
+    let cam = game.camera_offset();
     if game.lander.body.pos.y > WORLD_HEIGHT + 10.0
-        || game.lander.body.pos.x < -10.0
-        || game.lander.body.pos.x > WORLD_WIDTH + 10.0
+        || flew_off_horizontal_view(game.lander.body.pos.x, cam.x)
     {
         game.status = GameStatus::Crashed;
     }
+}
+
+fn flew_off_horizontal_view(lander_x: f32, cam_x: f32) -> bool {
+    const MARGIN: f32 = 3.0;
+    let view_left = cam_x;
+    let view_right = cam_x + VIEW_WIDTH;
+    lander_x < view_left - MARGIN || lander_x > view_right + MARGIN
 }
 
 fn apply_orbital_descent(game: &mut GameState) {

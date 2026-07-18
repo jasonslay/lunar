@@ -9,7 +9,7 @@ use rand::Rng;
 use crate::game::{GameState, GameStatus};
 use crate::lander::{Lander, LANDER_BODY_FILL};
 use crate::physics::{Thruster, PIXELS_PER_METER};
-use crate::world::{World, SCREEN_HEIGHT, SCREEN_WIDTH, TERRAIN_MARKER_SPACING, WORLD_WIDTH};
+use crate::world::{World, SCREEN_HEIGHT, SCREEN_WIDTH, TERRAIN_MARKER_SPACING, TERRAIN_MAX_X, TERRAIN_MIN_X};
 
 const GREEN: Color = Color::srgb(0.2, 1.0, 0.4);
 const DIM_GREEN: Color = Color::srgb(0.1, 0.5, 0.2);
@@ -33,6 +33,9 @@ const HUD_BG_WIDTH: f32 = 210.0;
 const HUD_BG_HEIGHT: f32 = 172.0;
 const HUD_LINE_COUNT: usize = 7;
 const HUD_BG_PAD: f32 = 10.0;
+const HUD_FONT_SIZE: f32 = 18.0;
+const HUD_LINE_STEP: f32 = 22.0;
+const STATUS_FONT_SIZE: f32 = 20.0;
 const STATUS_BG_WIDTH: f32 = 760.0;
 const STATUS_BG_HEIGHT: f32 = 52.0;
 const STATUS_BELOW_HORIZON: f32 = 40.0;
@@ -116,12 +119,12 @@ pub fn setup_hud(
             HudLine(i),
             Text2d::new(""),
             TextFont {
-                font_size: 18.0,
+                font_size: HUD_FONT_SIZE,
                 ..default()
             },
             TextColor(GREEN),
             Anchor::TopLeft,
-            Transform::from_xyz(hud_left, hud_top - i as f32 * 22.0, 1.0),
+            Transform::from_xyz(hud_left, hud_top - i as f32 * HUD_LINE_STEP, 1.0),
             UI_LAYERS,
         ));
     }
@@ -139,7 +142,7 @@ pub fn setup_hud(
         StatusText,
         Text2d::new(""),
         TextFont {
-            font_size: 20.0,
+            font_size: STATUS_FONT_SIZE,
             ..default()
         },
         TextColor(BRIGHT_GREEN),
@@ -221,9 +224,14 @@ fn to_bevy(screen: Vec2) -> Vec2 {
     )
 }
 
+/// Scale UI to match the letterboxed game viewport (1.0 at the design 800×600 size).
+fn ui_viewport_scale(window_w: f32, window_h: f32) -> f32 {
+    (window_w / SCREEN_WIDTH).min(window_h / SCREEN_HEIGHT)
+}
+
 /// Map a world-camera bevy coordinate into UI-camera space (letterboxed 800×600 → window).
 fn map_world_bevy_to_ui(world_bevy: Vec2, window_w: f32, window_h: f32) -> Vec2 {
-    let scale = (window_w / SCREEN_WIDTH).min(window_h / SCREEN_HEIGHT);
+    let scale = ui_viewport_scale(window_w, window_h);
     let viewport_w = SCREEN_WIDTH * scale;
     let viewport_h = SCREEN_HEIGHT * scale;
     let offset_x = (window_w - viewport_w) * 0.5;
@@ -241,8 +249,10 @@ fn map_world_bevy_to_ui(world_bevy: Vec2, window_w: f32, window_h: f32) -> Vec2 
 fn layout_hud_lines(
     hud_left: f32,
     hud_top: f32,
+    line_step: f32,
+    font_size: f32,
     hud: &mut Query<
-        (&HudLine, &mut Transform, &mut Text2d),
+        (&HudLine, &mut Transform, &mut Text2d, &mut TextFont),
         (
             With<HudLine>,
             Without<HudPanel>,
@@ -251,8 +261,9 @@ fn layout_hud_lines(
         ),
     >,
 ) {
-    for (HudLine(i), mut transform, _) in hud {
-        transform.translation = Vec3::new(hud_left, hud_top - *i as f32 * 22.0, 1.0);
+    for (HudLine(i), mut transform, _, mut font) in hud {
+        transform.translation = Vec3::new(hud_left, hud_top - *i as f32 * line_step, 1.0);
+        font.font_size = font_size;
     }
 }
 
@@ -318,6 +329,11 @@ fn draw_star_dot(gizmos: &mut Gizmos, x: f32, y: f32, brightness: f32) {
 }
 
 fn draw_terrain(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
+    let view_left = cam.x;
+    let view_right = cam.x + SCREEN_WIDTH / PIXELS_PER_METER;
+    let terrain_left = world.terrain[0].x;
+    let terrain_right = world.terrain[world.terrain.len() - 1].x;
+
     for window in world.terrain.windows(2) {
         let a = world_to_screen(window[0], cam);
         let b = world_to_screen(window[1], cam);
@@ -326,6 +342,25 @@ fn draw_terrain(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
         let color = if seg_on_pad { BRIGHT_GREEN } else { GREEN };
 
         line_2d(gizmos, a, b, color);
+    }
+
+    if view_left < terrain_left {
+        let y = world.height_at(view_left);
+        line_2d(
+            gizmos,
+            world_to_screen(Vec2::new(view_left, y), cam),
+            world_to_screen(Vec2::new(terrain_left, y), cam),
+            GREEN,
+        );
+    }
+    if view_right > terrain_right {
+        let y = world.height_at(terrain_right);
+        line_2d(
+            gizmos,
+            world_to_screen(Vec2::new(terrain_right, y), cam),
+            world_to_screen(Vec2::new(view_right, y), cam),
+            GREEN,
+        );
     }
 
     draw_distance_craters(gizmos, world, cam);
@@ -374,8 +409,8 @@ fn terrain_frame_at(
     cam: Vec2,
     half_width_m: f32,
 ) -> (Vec2, Vec2, Vec2, Vec2) {
-    let x0 = (x - half_width_m).max(0.0);
-    let x1 = (x + half_width_m).min(WORLD_WIDTH);
+    let x0 = (x - half_width_m).max(TERRAIN_MIN_X);
+    let x1 = (x + half_width_m).min(TERRAIN_MAX_X);
     let rim_left = world_to_screen(Vec2::new(x0, world.height_at(x0)), cam);
     let rim_right = world_to_screen(Vec2::new(x1, world.height_at(x1)), cam);
     let tangent = (rim_right - rim_left).normalize_or_zero();
@@ -425,7 +460,7 @@ fn draw_distance_craters(gizmos: &mut Gizmos, world: &World, cam: Vec2) {
     let mut x = (view_left / TERRAIN_MARKER_SPACING).floor() * TERRAIN_MARKER_SPACING;
 
     while x <= view_right {
-        if (0.0..=WORLD_WIDTH).contains(&x) && !world.is_on_pad(x) {
+        if (TERRAIN_MIN_X..=TERRAIN_MAX_X).contains(&x) && !world.is_on_pad(x) {
             let every_100 = is_spacing_multiple(x, 100.0);
             let every_50 = is_spacing_multiple(x, 50.0);
             let radius = crater_radius_px(x, every_100, every_50);
@@ -671,8 +706,8 @@ fn draw_dust_kickup(
     }
 
     let dx = 0.5;
-    let x0 = (hit.x - dx).max(0.0);
-    let x1 = (hit.x + dx).min(WORLD_WIDTH);
+    let x0 = (hit.x - dx).max(TERRAIN_MIN_X);
+    let x1 = (hit.x + dx).min(TERRAIN_MAX_X);
     let rim_left = world_to_screen(Vec2::new(x0, world.height_at(x0)), cam);
     let rim_right = world_to_screen(Vec2::new(x1, world.height_at(x1)), cam);
     let tangent = (rim_right - rim_left).normalize_or_zero();
@@ -780,7 +815,7 @@ pub fn update_hud(
         ),
     >,
     mut hud: Query<
-        (&HudLine, &mut Transform, &mut Text2d),
+        (&HudLine, &mut Transform, &mut Text2d, &mut TextFont),
         (
             With<HudLine>,
             Without<HudPanel>,
@@ -789,7 +824,7 @@ pub fn update_hud(
         ),
     >,
     mut status: Query<
-        (&mut Text2d, &mut Transform, &mut Visibility),
+        (&mut Text2d, &mut Transform, &mut Visibility, &mut TextFont),
         (
             With<StatusText>,
             Without<StatusPanel>,
@@ -812,19 +847,28 @@ pub fn update_hud(
     };
     let window_w = window.width();
     let window_h = window.height();
+    let scale = ui_viewport_scale(window_w, window_h);
+    let margin = HUD_MARGIN * scale;
+    let pad = HUD_BG_PAD * scale;
+    let bg_w = HUD_BG_WIDTH * scale;
+    let bg_h = HUD_BG_HEIGHT * scale;
+    let line_step = HUD_LINE_STEP * scale;
+    let hud_font = HUD_FONT_SIZE * scale;
+    let status_font = STATUS_FONT_SIZE * scale;
 
-    let hud_left = -window_w * 0.5 + HUD_MARGIN;
-    let hud_top = window_h * 0.5 - HUD_MARGIN;
+    let hud_left = -window_w * 0.5 + margin;
+    let hud_top = window_h * 0.5 - margin;
 
     if let Ok(mut panel) = hud_panel.get_single_mut() {
         panel.translation = Vec3::new(
-            hud_left - HUD_BG_PAD + HUD_BG_WIDTH * 0.5,
-            hud_top + HUD_BG_PAD - HUD_BG_HEIGHT * 0.5,
+            hud_left - pad + bg_w * 0.5,
+            hud_top + pad - bg_h * 0.5,
             0.0,
         );
+        panel.scale = Vec3::splat(scale);
     }
 
-    layout_hud_lines(hud_left, hud_top, &mut hud);
+    layout_hud_lines(hud_left, hud_top, line_step, hud_font, &mut hud);
 
     let alt = game.world.clearance_above_terrain(&game.lander.hull_world);
     let vy = game.lander.body.vel.y;
@@ -853,7 +897,7 @@ pub fn update_hud(
         format!("FPS  {:>6.0}", fps),
     ];
 
-    for (HudLine(i), _, mut text) in &mut hud {
+    for (HudLine(i), _, mut text, _) in &mut hud {
         if let Some(line) = lines.get(*i) {
             text.0 = line.clone();
         }
@@ -862,9 +906,10 @@ pub fn update_hud(
     let status_world_y = status_y_below_horizon(&game);
     let status_ui = map_world_bevy_to_ui(Vec2::new(0.0, status_world_y), window_w, window_h);
 
-    if let Ok((mut text, mut transform, mut vis)) = status.get_single_mut() {
+    if let Ok((mut text, mut transform, mut vis, mut font)) = status.get_single_mut() {
         transform.translation.x = status_ui.x;
         transform.translation.y = status_ui.y;
+        font.font_size = status_font;
 
         match game.status {
             GameStatus::Flying => {
@@ -884,6 +929,7 @@ pub fn update_hud(
     if let Ok((mut transform, mut vis)) = status_panel.get_single_mut() {
         transform.translation.x = status_ui.x;
         transform.translation.y = status_ui.y;
+        transform.scale = Vec3::splat(scale);
         *vis = if game.status == GameStatus::Flying {
             Visibility::Hidden
         } else {
