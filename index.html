@@ -5,20 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Lunar Lander</title>
     <link data-trunk rel="css" href="web/style.css" />
+    <link data-trunk rel="copy-file" href="web/controls.js" />
     <link data-trunk rel="rust" data-bin="lunar" />
   </head>
   <body>
     <main class="page">
       <header class="header">
         <h1>Lunar Lander</h1>
-        <p>
+        <p class="controls-desktop">
           Arrow keys / WASD / Space to fly. <kbd>P</kbd> autopilot,
           <kbd>R</kbd> reset, <kbd>N</kbd> new terrain.
+        </p>
+        <p class="controls-mobile">
+          Use the on-screen controls to fly. Tap AP for autopilot, R to reset,
+          N for new terrain.
         </p>
       </header>
       <div id="game-shell" class="game-shell">
         <canvas id="bevy_canvas"></canvas>
       </div>
+      <div id="touch-controls" class="touch-controls" aria-label="Touch controls">
+        <div class="touch-row touch-row--fly">
+          <button type="button" class="touch-btn touch-btn--thrust" data-thrust="left" aria-label="Tilt left">
+            ◀
+          </button>
+          <button type="button" class="touch-btn touch-btn--thrust touch-btn--main" data-thrust="main" aria-label="Main engine">
+            ▲
+          </button>
+          <button type="button" class="touch-btn touch-btn--thrust" data-thrust="right" aria-label="Tilt right">
+            ▶
+          </button>
+        </div>
+        <div class="touch-row touch-row--actions">
+          <button type="button" class="touch-btn touch-btn--action" data-action="autopilot">AP</button>
+          <button type="button" class="touch-btn touch-btn--action" data-action="reset">R</button>
+          <button type="button" class="touch-btn touch-btn--action" data-action="new">N</button>
+        </div>
+      </div>
     </main>
+    <script src="controls.js"></script>
   </body>
 </html>

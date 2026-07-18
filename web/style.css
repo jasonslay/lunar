@@ -12,6 +12,8 @@ body {
   background: #0a0a0a;
   color: #8cff9a;
   font-family: "IBM Plex Mono", "Courier New", monospace;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .page {
@@ -22,6 +24,7 @@ body {
   justify-content: center;
   gap: 1rem;
   padding: 1.5rem;
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
 
 .header {
@@ -44,6 +47,10 @@ body {
   line-height: 1.5;
 }
 
+.controls-mobile {
+  display: none;
+}
+
 kbd {
   display: inline-block;
   padding: 0.1rem 0.35rem;
@@ -58,6 +65,7 @@ kbd {
   border: 1px solid #1f5f31;
   box-shadow: 0 0 24px rgba(32, 255, 100, 0.08);
   background: #000;
+  touch-action: none;
 }
 
 canvas {
@@ -66,4 +74,75 @@ canvas {
   height: 600px;
   max-width: calc(100vw - 2rem);
   max-height: calc(100vh - 8rem);
+  touch-action: none;
+}
+
+.touch-controls {
+  display: none;
+  width: min(800px, calc(100vw - 2rem));
+  gap: 0.75rem;
+  user-select: none;
+}
+
+.touch-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.touch-row--fly {
+  grid-template-columns: 1fr 1.2fr 1fr;
+}
+
+.touch-row--actions {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.touch-btn {
+  min-height: 3.75rem;
+  border: 1px solid #2d6b3c;
+  border-radius: 0.5rem;
+  background: #102016;
+  color: #b8ffd0;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.touch-btn--main {
+  font-size: 1.35rem;
+}
+
+.touch-btn:active,
+.touch-btn.is-active {
+  background: #1a4a28;
+  border-color: #4fd67a;
+  color: #d8ffe6;
+  box-shadow: inset 0 0 12px rgba(32, 255, 100, 0.15);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .controls-desktop {
+    display: none;
+  }
+
+  .controls-mobile {
+    display: block;
+  }
+
+  .touch-controls {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page {
+    justify-content: flex-start;
+    padding-top: 1rem;
+  }
+
+  canvas {
+    max-height: calc(100vh - 14rem - env(safe-area-inset-bottom));
+  }
 }

@@ -65,6 +65,8 @@ Each deploy to `main` refreshes the rolling GitHub Release tag [`web`](https://g
 | `R` | Reset current terrain |
 | `N` | New procedural terrain (new seed) |
 
+On touch devices, on-screen buttons appear below the game (hold ◀ ▲ ▶ to fly; tap AP / R / N for actions).
+
 ## Landing criteria
 
 A safe landing requires:

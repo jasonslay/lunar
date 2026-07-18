@@ -15,7 +15,7 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
 use game::{GameState, update_game};
-use input::{read_keyboard_input, ThrustInput};
+use input::{read_player_input, ThrustInput};
 use render::{draw_world, setup_camera, setup_hud, setup_lander, update_hud, update_lander_body};
 use world::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
@@ -71,7 +71,7 @@ pub fn build_app() -> App {
     .add_systems(
         Update,
         (
-            read_keyboard_input,
+            read_player_input,
             update_game,
             update_lander_body,
             draw_world,
