@@ -146,6 +146,21 @@ pub fn update_game(
     mut input: ResMut<ThrustInput>,
     mut game: ResMut<GameState>,
 ) {
+    if input.reset {
+        game.reset();
+        input.toggle_autopilot = false;
+        input.reset = false;
+        input.new_level = false;
+        return;
+    }
+    if input.new_level {
+        game.new_level();
+        input.toggle_autopilot = false;
+        input.reset = false;
+        input.new_level = false;
+        return;
+    }
+
     if input.toggle_autopilot {
         game.autopilot = !game.autopilot;
         if game.autopilot {
@@ -154,15 +169,7 @@ pub fn update_game(
     }
 
     if game.status != GameStatus::Flying {
-        if input.reset {
-            game.reset();
-        }
-        if input.new_level {
-            game.new_level();
-        }
         input.toggle_autopilot = false;
-        input.reset = false;
-        input.new_level = false;
         return;
     }
 
@@ -176,8 +183,6 @@ pub fn update_game(
     }
 
     input.toggle_autopilot = false;
-    input.reset = false;
-    input.new_level = false;
 }
 
 fn physics_step(game: &mut GameState, input: &ThrustInput) {
