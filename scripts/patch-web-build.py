@@ -69,6 +69,11 @@ def patch_html(path: str) -> None:
         if catch_idx != -1:
             rest = rest[:catch_idx].strip()
 
+    hash_match = re.search(r"lunar-([a-f0-9]+)_bg\.wasm", html)
+    if hash_match:
+        wasm_suffix = hash_match.group(1)[-4:]
+        rest = f'window.__lunarWasmHash="{wasm_suffix}";\n{rest}'
+
     if "Downloading game engine" in rest:
         patched_body = f"{import_line}\n\n{rest}"
     else:

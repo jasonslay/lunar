@@ -16,8 +16,27 @@ use bevy::window::WindowResolution;
 
 use game::{GameState, update_game};
 use input::{read_player_input, ThrustInput};
-use render::{draw_world, setup_camera, setup_hud, setup_lander, update_hud, update_lander_body};
+use render::{
+    draw_world, setup_camera, setup_hud, setup_lander, update_hud, update_lander_body, WasmBuildId,
+};
 use world::{SCREEN_HEIGHT, SCREEN_WIDTH};
+
+#[cfg(target_arch = "wasm32")]
+fn load_wasm_build_id(mut commands: Commands) {
+    use js_sys::Reflect;
+    use wasm_bindgen::JsValue;
+
+    let suffix = web_sys::window()
+        .and_then(|window| Reflect::get(&window, &JsValue::from_str("__lunarWasmHash")).ok())
+        .and_then(|value| value.as_string())
+        .unwrap_or_default();
+    commands.insert_resource(WasmBuildId(suffix));
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn load_wasm_build_id(mut commands: Commands) {
+    commands.insert_resource(WasmBuildId::default());
+}
 
 fn window_plugin() -> WindowPlugin {
     WindowPlugin {
@@ -69,7 +88,10 @@ pub fn build_app() -> App {
     .add_plugins(default_plugins())
     .init_resource::<ThrustInput>()
     .insert_resource(GameState::new(42))
-    .add_systems(Startup, (setup_camera, setup_hud, setup_lander))
+    .add_systems(
+        Startup,
+        (load_wasm_build_id, setup_camera, setup_hud, setup_lander).chain(),
+    )
     .add_systems(
         Update,
         (

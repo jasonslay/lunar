@@ -40,6 +40,8 @@ const STATUS_FONT_SIZE: f32 = 20.0;
 const STATUS_BG_WIDTH: f32 = 760.0;
 const STATUS_BG_HEIGHT: f32 = 52.0;
 const STATUS_BOTTOM_MARGIN: f32 = 14.0;
+const WASM_HASH_FONT_SIZE: f32 = 14.0;
+const WASM_HASH_MARGIN: f32 = 10.0;
 const PANEL_COLOR: Color = Color::srgba(0.0, 0.0, 0.0, 0.94);
 const UI_LAYERS: RenderLayers = RenderLayers::layer(1);
 const CRATER_HASH_SCALE: f32 = 43_758.547;
@@ -55,6 +57,12 @@ pub struct StatusPanel;
 
 #[derive(Component)]
 pub struct StatusText;
+
+#[derive(Component)]
+pub struct WasmHashLabel;
+
+#[derive(Resource, Default)]
+pub struct WasmBuildId(pub String);
 
 #[derive(Component)]
 pub struct LanderBody;
@@ -98,6 +106,7 @@ pub fn setup_hud(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    wasm_build: Res<WasmBuildId>,
 ) {
     let hud_left = -SCREEN_WIDTH * 0.5 + HUD_MARGIN;
     let hud_top = SCREEN_HEIGHT * 0.5 - HUD_MARGIN;
@@ -152,6 +161,21 @@ pub fn setup_hud(
         Visibility::Hidden,
         UI_LAYERS,
     ));
+
+    if !wasm_build.0.is_empty() {
+        commands.spawn((
+            WasmHashLabel,
+            Text2d::new(wasm_build.0.clone()),
+            TextFont {
+                font_size: WASM_HASH_FONT_SIZE,
+                ..default()
+            },
+            TextColor(DIM_GREEN),
+            Anchor::BottomRight,
+            Transform::from_xyz(0.0, 0.0, 1.0),
+            UI_LAYERS,
+        ));
+    }
 }
 
 fn lander_fill_mesh(vertices: &[Vec2]) -> Mesh {
@@ -813,6 +837,17 @@ pub fn update_hud(
             Without<StatusText>,
             Without<HudLine>,
             Without<HudPanel>,
+            Without<WasmHashLabel>,
+        ),
+    >,
+    mut wasm_hash: Query<
+        (&mut Transform, &mut TextFont),
+        (
+            With<WasmHashLabel>,
+            Without<HudPanel>,
+            Without<HudLine>,
+            Without<StatusText>,
+            Without<StatusPanel>,
         ),
     >,
 ) {
@@ -910,5 +945,13 @@ pub fn update_hud(
         } else {
             Visibility::Visible
         };
+    }
+
+    let hash_margin = WASM_HASH_MARGIN * scale;
+    let hash_font = WASM_HASH_FONT_SIZE * scale;
+    if let Ok((mut transform, mut font)) = wasm_hash.get_single_mut() {
+        transform.translation.x = window_w * 0.5 - hash_margin;
+        transform.translation.y = -window_h * 0.5 + hash_margin;
+        font.font_size = hash_font;
     }
 }
