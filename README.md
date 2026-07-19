@@ -50,8 +50,6 @@ Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
 
 **https://jtslay.com/lunar/**
 
-Also published on GitHub Pages: https://jasonslay.github.io/lunar/
-
 Each deploy to `main` refreshes the rolling GitHub Release tag [`web`](https://github.com/jasonslay/lunar/releases/tag/web) (`lunar-web.tar.gz`), which [jtslay.com](https://jtslay.com) downloads for `/lunar/`.
 
 ## Controls
@@ -115,7 +113,7 @@ src/
   input.rs      — Keyboard mapping
   screenshot.rs — Native-only screenshot capture for docs
 index.html      — Standalone web page shell
-Trunk.toml      — WASM build and GitHub Pages config
+Trunk.toml      — WASM build config (`public_url = /lunar/`)
 web/style.css   — Page styling around the game canvas
 ```
 
