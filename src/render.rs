@@ -21,9 +21,9 @@ const PLUME_OUTER: Color = Color::srgb(1.0, 0.35, 0.1);
 const DUST_BRIGHT: Color = Color::srgb(0.55, 1.0, 0.65);
 const DUST_DIM: Color = Color::srgb(0.12, 0.42, 0.22);
 /// Ray length for finding where exhaust meets terrain (much longer than the visible plume).
-const MAX_DUST_RAY_M: f32 = 28.0;
+const MAX_DUST_RAY_M: f32 = 56.0;
 /// Dust fades in as the nozzle gets within this distance of the impact point.
-const DUST_FALLOFF_M: f32 = 20.0;
+const DUST_FALLOFF_M: f32 = 40.0;
 const DUST_LENGTH_SCALE: f32 = 2.0;
 const STAR_DIM: Color = Color::srgb(0.7, 0.85, 1.0);
 const STAR_BRIGHT: Color = Color::srgb(1.0, 1.0, 1.0);
@@ -39,7 +39,7 @@ const HUD_LINE_STEP: f32 = 22.0;
 const STATUS_FONT_SIZE: f32 = 20.0;
 const STATUS_BG_WIDTH: f32 = 760.0;
 const STATUS_BG_HEIGHT: f32 = 52.0;
-const STATUS_BELOW_HORIZON: f32 = 40.0;
+const STATUS_BOTTOM_MARGIN: f32 = 14.0;
 const PANEL_COLOR: Color = Color::srgba(0.0, 0.0, 0.0, 0.94);
 const UI_LAYERS: RenderLayers = RenderLayers::layer(1);
 const CRATER_HASH_SCALE: f32 = 43_758.547;
@@ -201,16 +201,6 @@ pub fn update_lander_body(mut lander: Query<&mut Transform, With<LanderBody>>, g
     transform.scale = Vec3::new(PIXELS_PER_METER, PIXELS_PER_METER, 1.0);
 }
 
-fn status_y_below_horizon(game: &GameState) -> f32 {
-    let cam = game.camera_offset();
-    let world_x = game.lander.body.pos.x;
-    let horizon_screen_y =
-        (game.world.height_at(world_x) - cam.y) * PIXELS_PER_METER;
-    let status_screen_y =
-        (horizon_screen_y + STATUS_BELOW_HORIZON).min(SCREEN_HEIGHT - 28.0);
-    to_bevy(Vec2::new(SCREEN_WIDTH * 0.5, status_screen_y)).y
-}
-
 fn world_to_screen(world_m: Vec2, cam_m: Vec2) -> Vec2 {
     Vec2::new(
         (world_m.x - cam_m.x) * PIXELS_PER_METER,
@@ -228,23 +218,6 @@ fn to_bevy(screen: Vec2) -> Vec2 {
 /// Scale UI to match the letterboxed game viewport (1.0 at the design 800×600 size).
 fn ui_viewport_scale(window_w: f32, window_h: f32) -> f32 {
     (window_w / SCREEN_WIDTH).min(window_h / SCREEN_HEIGHT)
-}
-
-/// Map a world-camera bevy coordinate into UI-camera space (letterboxed 800×600 → window).
-fn map_world_bevy_to_ui(world_bevy: Vec2, window_w: f32, window_h: f32) -> Vec2 {
-    let scale = ui_viewport_scale(window_w, window_h);
-    let viewport_w = SCREEN_WIDTH * scale;
-    let viewport_h = SCREEN_HEIGHT * scale;
-    let offset_x = (window_w - viewport_w) * 0.5;
-    let offset_y = (window_h - viewport_h) * 0.5;
-
-    let screen_x = world_bevy.x + SCREEN_WIDTH * 0.5;
-    let screen_y = SCREEN_HEIGHT * 0.5 - world_bevy.y;
-
-    let px = offset_x + screen_x * scale;
-    let py = offset_y + screen_y * scale;
-
-    Vec2::new(px - window_w * 0.5, window_h * 0.5 - py)
 }
 
 fn layout_hud_lines(
@@ -904,12 +877,13 @@ pub fn update_hud(
         }
     }
 
-    let status_world_y = status_y_below_horizon(&game);
-    let status_ui = map_world_bevy_to_ui(Vec2::new(0.0, status_world_y), window_w, window_h);
+    let status_margin = STATUS_BOTTOM_MARGIN * scale;
+    let status_x = 0.0;
+    let status_y = -window_h * 0.5 + status_margin + STATUS_BG_HEIGHT * scale * 0.5;
 
     if let Ok((mut text, mut transform, mut vis, mut font)) = status.get_single_mut() {
-        transform.translation.x = status_ui.x;
-        transform.translation.y = status_ui.y;
+        transform.translation.x = status_x;
+        transform.translation.y = status_y;
         font.font_size = status_font;
 
         match game.status {
@@ -928,8 +902,8 @@ pub fn update_hud(
     }
 
     if let Ok((mut transform, mut vis)) = status_panel.get_single_mut() {
-        transform.translation.x = status_ui.x;
-        transform.translation.y = status_ui.y;
+        transform.translation.x = status_x;
+        transform.translation.y = status_y;
         transform.scale = Vec3::splat(scale);
         *vis = if game.status == GameStatus::Flying {
             Visibility::Hidden
