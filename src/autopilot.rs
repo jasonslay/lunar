@@ -85,13 +85,28 @@ fn recovery_thrust(lander: &Lander) -> (f32, f32, f32) {
     (main, tilt_left, tilt_right)
 }
 
-fn target_horizontal_velocity(dx: f32, alt: f32) -> f32 {
-    if dx.abs() < 2.5 {
+fn target_horizontal_velocity(dx: f32, alt: f32, vx: f32) -> f32 {
+    let toward_pad = dx.signum();
+    let range = dx.abs();
+
+    // Final approach: damped steering toward pad center.
+    if alt < 7.0 && range < 5.0 {
+        let pos_gain = if alt < 3.5 { 0.75 } else { 0.5 };
+        let vel_gain = 0.55;
+        let cap = if alt < 3.5 { 0.85 } else { 1.3 };
+        if range < 0.5 && alt < 2.5 && vx.abs() < 0.25 {
+            return 0.0;
+        }
+        return (dx * pos_gain - vx * vel_gain).clamp(-cap, cap);
+    }
+
+    if range < 1.0 && alt < 4.0 && vx.abs() < 0.3 {
         return 0.0;
     }
 
-    let toward_pad = dx.signum();
-    let range = dx.abs();
+    if range < 2.5 {
+        return 0.0;
+    }
 
     let brake_accel = if range < 25.0 { 2.0 } else { 1.1 };
     let max_speed = if range < 20.0 {
@@ -161,7 +176,7 @@ pub fn compute_thrust(
     let range = dx.abs();
     let pad_half = (world.pad_end_x - world.pad_start_x) * 0.5;
 
-    let target_vx = target_horizontal_velocity(dx, alt);
+    let target_vx = target_horizontal_velocity(dx, alt, vel.x);
     let target_vy = target_vertical_velocity(alt, dx.abs());
     let vx_err = target_vx - vel.x;
     let vy_err = target_vy - vel.y;
@@ -185,8 +200,11 @@ pub fn compute_thrust(
     if alt < 8.0 && vel.x.abs() > 0.8 {
         pitch_gain = pitch_gain.max(0.12);
     }
-    // Overshot past the pad — brake hard back toward center.
-    if dx > 0.0 && vel.x < 0.0 {
+    if alt < 7.0 && range < 4.0 {
+        pitch_gain = pitch_gain.max(0.11 + (4.0 - range.min(4.0)) / 4.0 * 0.04);
+    }
+    // Moving away from pad center — brake back toward the middle.
+    if range > 0.5 && dx.signum() != vel.x.signum() && vel.x.abs() > 0.25 {
         pitch_gain = pitch_gain.max(0.14);
     }
 
@@ -195,6 +213,7 @@ pub fn compute_thrust(
         || vx_err.abs() > 2.5
         || vel.x.abs() > 4.0
         || (range > 80.0 && alt > 35.0)
+        || (alt < 8.0 && range < 5.0)
     {
         1.0
     } else {
@@ -203,7 +222,7 @@ pub fn compute_thrust(
     *smoothed_pitch += (raw_target - *smoothed_pitch) * pitch_smooth;
     let mut target_angle = *smoothed_pitch;
 
-    if alt < 7.0 && dx.abs() < pad_half + 5.0 {
+    if alt < 7.0 && dx.abs() < pad_half + 5.0 && dx.abs() < 1.0 {
         let blend = (1.0 - alt / 7.0).clamp(0.0, 1.0);
         target_angle *= 1.0 - blend;
     }
@@ -326,7 +345,7 @@ mod tests {
         let lander = spawn_approach_lander(&world);
         let dx = world.pad_center_x - lander.body.pos.x;
         let alt = world.altitude(lander.body.pos.x, lander.body.pos.y);
-        let target_vx = target_horizontal_velocity(dx, alt);
+        let target_vx = target_horizontal_velocity(dx, alt, lander.body.vel.x);
 
         assert!(dx < -400.0);
         assert!(target_vx < -10.0, "expected strong leftward closure, got {target_vx}");
@@ -334,7 +353,13 @@ mod tests {
 
     #[test]
     fn zeros_horizontal_target_over_pad() {
-        assert_eq!(target_horizontal_velocity(1.0, 5.0), 0.0);
+        assert_eq!(target_horizontal_velocity(1.0, 10.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn steers_toward_pad_center_on_final_approach() {
+        let vx = target_horizontal_velocity(2.0, 3.0, 0.4);
+        assert!(vx > 0.5, "expected rightward closure toward center, got {vx}");
     }
 
     #[test]
@@ -430,6 +455,7 @@ mod tests {
         assert!(min_x >= WORLD_MIN_X, "delayed AP overshot left: min_x={min_x}");
     }
 
+
     #[test]
     fn lands_on_pad_from_approach() {
         let world = World::generate(42);
@@ -448,6 +474,11 @@ mod tests {
             result.steps,
         );
         assert!(world.is_on_pad(result.pos.x));
+        let dx = (result.pos.x - world.pad_center_x).abs();
+        assert!(
+            dx < 1.0,
+            "expected landing near pad center, offset {dx:.2} m"
+        );
     }
 
     #[test]
