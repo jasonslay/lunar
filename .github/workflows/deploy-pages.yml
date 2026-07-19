@@ -88,14 +88,14 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      # Optional: set JTSTAY_COM_DISPATCH_TOKEN (PAT with repo scope on jasonslay/jtslay.com)
+      # Optional: set JTSLAY_COM_DISPATCH_TOKEN (PAT with repo scope on jasonslay/jtslay.com)
       # so lunar pushes also redeploy https://jtslay.com/lunar/
       - name: Trigger jtslay.com redeploy
         env:
-          DISPATCH_TOKEN: ${{ secrets.JTSTAY_COM_DISPATCH_TOKEN }}
+          DISPATCH_TOKEN: ${{ secrets.JTSLAY_COM_DISPATCH_TOKEN }}
         run: |
           if [ -z "${DISPATCH_TOKEN}" ]; then
-            echo "JTSTAY_COM_DISPATCH_TOKEN not set; skipping jtslay.com redeploy"
+            echo "JTSLAY_COM_DISPATCH_TOKEN not set; skipping jtslay.com redeploy"
             exit 0
           fi
           curl -fsS -X POST \
