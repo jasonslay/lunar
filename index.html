@@ -6,7 +6,13 @@
     <title>Lunar Lander</title>
     <link data-trunk rel="css" href="web/style.css" />
     <link data-trunk rel="copy-file" href="web/controls.js" />
-    <link data-trunk rel="rust" data-bin="lunar" />
+    <link
+      data-trunk
+      rel="rust"
+      data-bin="lunar"
+      data-wasm-opt="z"
+      data-wasm-opt-params="--enable-bulk-memory --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+    />
   </head>
   <body style="background:#0a0a0a;color:#8cff9a;margin:0;">
     <script>

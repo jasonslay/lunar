@@ -39,7 +39,7 @@ cargo run --release
 rustup target add wasm32-unknown-unknown
 cargo install trunk --locked --version 0.21.14
 
-# Build or serve (use --release; dev builds are slow)
+# Build or serve (use --release; enables wasm-opt + wasm-release profile)
 NO_COLOR=false trunk build --release
 NO_COLOR=false trunk serve --release
 ```

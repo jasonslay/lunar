@@ -13,7 +13,8 @@ path = "src/main.rs"
 
 [features]
 default = ["native"]
-native = ["bevy/x11", "bevy/wayland", "bevy/multi_threaded"]
+# png stays native-only so README screenshot capture still works.
+native = ["bevy/x11", "bevy/wayland", "bevy/multi_threaded", "bevy/png"]
 web = ["bevy/webgl2"]
 
 [dependencies]
@@ -28,10 +29,8 @@ bevy = { version = "0.15", default-features = false, features = [
     "bevy_window",
     "bevy_winit",
     "default_font",
-    "png",
-    "webgl2",
 ] }
-glam = { version = "0.29", features = ["serde"] }
+glam = "0.29"
 rand = "0.8"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -48,6 +47,3 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
-
-[package.metadata.trunk]
-wasm-opt = ["-Oz", "--enable-bulk-memory"]

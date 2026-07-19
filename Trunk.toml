@@ -4,6 +4,8 @@ dist = "dist"
 filehash = true
 features = "web"
 no_default_features = true
+# Use size-oriented Cargo profile; keep `trunk --release` so wasm-opt still runs.
+cargo_profile = "wasm-release"
 no_sri = true
 
 [[hooks]]
