@@ -16,6 +16,10 @@ const ORBITAL_STEER_RATE: f32 = 1.2;
 const MAX_LANDING_VY: f32 = 3.0;
 const MAX_LANDING_VX: f32 = 2.0;
 const MAX_LANDING_ANGLE: f32 = 15.0_f32.to_radians();
+/// Perfect soft landing with full tanks.
+const MAX_LANDING_SCORE: f32 = 10_000.0;
+const FUEL_SCORE_WEIGHT: f32 = 0.5;
+const SOFT_SCORE_WEIGHT: f32 = 0.5;
 /// Avoid startup hitches (shader compile, window init) simulating many physics steps in one frame.
 const MAX_FRAME_DT: f32 = 0.05;
 const MAX_PHYSICS_STEPS_PER_FRAME: usize = 4;
@@ -27,12 +31,21 @@ pub enum GameStatus {
     Crashed,
 }
 
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+pub struct LandingScore {
+    pub total: u32,
+    pub fuel: u32,
+    pub soft: u32,
+}
+
 #[derive(Resource)]
 pub struct GameState {
     pub lander: Lander,
     pub world: World,
     pub status: GameStatus,
     pub fuel: f32,
+    /// Set on a successful landing; zero while flying or after a crash.
+    pub score: LandingScore,
     pub seed: u64,
     pub approach_altitude: f32,
     pub initial_orbital_speed: f32,
@@ -65,6 +78,7 @@ impl GameState {
             world,
             status: GameStatus::Flying,
             fuel: FUEL_CAPACITY,
+            score: LandingScore::default(),
             seed,
             approach_altitude,
             initial_orbital_speed: INITIAL_ORBITAL_SPEED,
@@ -117,6 +131,7 @@ impl GameState {
         game.lander.body.pos.y += penetration;
         game.lander.update_hull_world();
         game.fuel = 1_640.0;
+        game.score = compute_landing_score(game.fuel, 0.0, 0.0, 0.0);
         game
     }
 
@@ -234,6 +249,7 @@ fn physics_step(game: &mut GameState, input: &ThrustInput) {
         || flew_off_horizontal_view(game.lander.body.pos.x, cam.x)
     {
         game.status = GameStatus::Crashed;
+        game.score = LandingScore::default();
     }
 }
 
@@ -272,6 +288,7 @@ fn resolve_landing(game: &mut GameState) {
 
     if on_pad && vy <= MAX_LANDING_VY && vx <= MAX_LANDING_VX && angle <= MAX_LANDING_ANGLE {
         game.status = GameStatus::Landed;
+        game.score = compute_landing_score(game.fuel, vy, vx, angle);
         game.lander.body.vel = Vec2::ZERO;
         game.lander.body.angular_vel = 0.0;
         game.lander.set_throttles(0.0, 0.0, 0.0);
@@ -280,6 +297,70 @@ fn resolve_landing(game: &mut GameState) {
         game.lander.update_hull_world();
     } else {
         game.status = GameStatus::Crashed;
+        game.score = LandingScore::default();
         game.lander.set_throttles(0.0, 0.0, 0.0);
+    }
+}
+
+/// Landing softness in \[0, 1\]: 1 is a dead-stop, 0 is at the crash limits.
+fn landing_softness(vy: f32, vx: f32, angle: f32) -> f32 {
+    let soft_vy = 1.0 - (vy / MAX_LANDING_VY).clamp(0.0, 1.0);
+    let soft_vx = 1.0 - (vx / MAX_LANDING_VX).clamp(0.0, 1.0);
+    let soft_angle = 1.0 - (angle / MAX_LANDING_ANGLE).clamp(0.0, 1.0);
+    soft_vy * 0.55 + soft_vx * 0.25 + soft_angle * 0.20
+}
+
+/// Score from remaining fuel and how soft the touchdown was (max [`MAX_LANDING_SCORE`]).
+pub fn compute_landing_score(fuel: f32, vy: f32, vx: f32, angle: f32) -> LandingScore {
+    let fuel_frac = (fuel / FUEL_CAPACITY).clamp(0.0, 1.0);
+    let softness = landing_softness(vy, vx, angle);
+    // Square softness so near-limit landings earn little on the soft axis.
+    let soft_frac = softness * softness;
+    let fuel_score = (MAX_LANDING_SCORE * FUEL_SCORE_WEIGHT * fuel_frac).round() as u32;
+    let soft_score = (MAX_LANDING_SCORE * SOFT_SCORE_WEIGHT * soft_frac).round() as u32;
+    LandingScore {
+        total: fuel_score + soft_score,
+        fuel: fuel_score,
+        soft: soft_score,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn perfect_landing_with_full_fuel_is_max_score() {
+        let score = compute_landing_score(FUEL_CAPACITY, 0.0, 0.0, 0.0);
+        assert_eq!(score.total, MAX_LANDING_SCORE as u32);
+        assert_eq!(score.fuel, (MAX_LANDING_SCORE * FUEL_SCORE_WEIGHT) as u32);
+        assert_eq!(score.soft, (MAX_LANDING_SCORE * SOFT_SCORE_WEIGHT) as u32);
+    }
+
+    #[test]
+    fn empty_tanks_still_score_from_softness() {
+        let score = compute_landing_score(0.0, 0.0, 0.0, 0.0);
+        assert_eq!(score.fuel, 0);
+        assert_eq!(score.soft, (MAX_LANDING_SCORE * SOFT_SCORE_WEIGHT) as u32);
+        assert_eq!(score.total, score.fuel + score.soft);
+    }
+
+    #[test]
+    fn hard_landing_scores_less_than_soft() {
+        let soft = compute_landing_score(1_000.0, 0.2, 0.1, 0.0);
+        let hard = compute_landing_score(1_000.0, MAX_LANDING_VY, MAX_LANDING_VX, MAX_LANDING_ANGLE);
+        assert!(soft.total > hard.total);
+        assert_eq!(soft.fuel, hard.fuel);
+        assert!(soft.soft > hard.soft);
+        assert!(hard.total > 0);
+    }
+
+    #[test]
+    fn more_fuel_scores_higher() {
+        let low = compute_landing_score(200.0, 0.5, 0.2, 0.05);
+        let high = compute_landing_score(1_800.0, 0.5, 0.2, 0.05);
+        assert!(high.total > low.total);
+        assert!(high.fuel > low.fuel);
+        assert_eq!(high.soft, low.soft);
     }
 }

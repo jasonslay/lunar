@@ -37,8 +37,8 @@ const HUD_BG_PAD: f32 = 10.0;
 const HUD_FONT_SIZE: f32 = 18.0;
 const HUD_LINE_STEP: f32 = 22.0;
 const STATUS_FONT_SIZE: f32 = 20.0;
-const STATUS_BG_WIDTH: f32 = 760.0;
-const STATUS_BG_HEIGHT: f32 = 52.0;
+const STATUS_BG_WIDTH: f32 = 780.0;
+const STATUS_BG_HEIGHT: f32 = 68.0;
 const STATUS_BOTTOM_MARGIN: f32 = 14.0;
 const WASM_HASH_FONT_SIZE: f32 = 14.0;
 const WASM_HASH_MARGIN: f32 = 10.0;
@@ -926,7 +926,11 @@ pub fn update_hud(
                 *vis = Visibility::Hidden;
             }
             GameStatus::Landed => {
-                **text = "LANDED - Press R to retry, N for new terrain".into();
+                **text = format!(
+                    "LANDED - Score {} (fuel {} + landing {})\nPress R to retry, N for new terrain",
+                    game.score.total, game.score.fuel, game.score.soft
+                )
+                .into();
                 *vis = Visibility::Visible;
             }
             GameStatus::Crashed => {

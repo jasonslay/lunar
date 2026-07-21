@@ -12,6 +12,7 @@ A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org
 - **Apollo-style approach** — spawn 480 m downrange at ~18 m/s horizontal velocity toward the pad
 - **Autopilot** — press `P` for guided landing with attitude damping and glide-slope guidance
 - **Retro HUD** — altitude above local terrain, velocities, angle, fuel, autopilot status
+- **Landing score** — up to 10,000 points from remaining fuel and how soft the touchdown was
 
 ## Screenshots
 
@@ -73,6 +74,11 @@ A safe landing requires:
 - Vertical speed ≤ 3 m/s
 - Horizontal speed ≤ 2 m/s
 - Tilt ≤ 15°
+
+A successful landing scores up to **10,000** points:
+
+- **Fuel** (up to 5,000) — remaining propellant as a fraction of capacity
+- **Landing** (up to 5,000) — how gentle the touchdown was versus the crash limits (vertical speed weighted most, then horizontal, then tilt)
 
 ## Development
 
