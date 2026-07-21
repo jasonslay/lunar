@@ -28,6 +28,41 @@ body {
   padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
 }
 
+.github-link {
+  position: fixed;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #5fd67a;
+  border-radius: 999px;
+  touch-action: manipulation;
+  -webkit-user-select: auto;
+  user-select: auto;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.github-link:hover,
+.github-link:focus-visible {
+  color: #d8ffe6;
+  background: #102016;
+  outline: none;
+}
+
+.github-link:focus-visible {
+  box-shadow: 0 0 0 1px #4fd67a;
+}
+
+.github-link svg {
+  width: 1.6rem;
+  height: 1.6rem;
+  display: block;
+}
+
 .header {
   text-align: center;
   max-width: 52rem;
