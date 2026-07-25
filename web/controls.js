@@ -64,6 +64,48 @@
     return Boolean(target?.closest?.("a.github-link, [data-allow-browser-nav]"));
   }
 
+  function openBrowserNavLink(link) {
+    const href = link?.href;
+    if (!href) return;
+    const target = link.getAttribute("target") || "_blank";
+    window.open(href, target, "noopener,noreferrer");
+  }
+
+  // Explicit tap navigation: ancestor touch-action / capture locks can still
+  // swallow the synthesized click even when we skip preventDefault.
+  function bindBrowserNavLinks() {
+    document.querySelectorAll("a[data-allow-browser-nav]").forEach((link) => {
+      let armed = false;
+
+      link.addEventListener(
+        "touchstart",
+        () => {
+          armed = true;
+        },
+        { passive: true }
+      );
+
+      link.addEventListener(
+        "touchcancel",
+        () => {
+          armed = false;
+        },
+        { passive: true }
+      );
+
+      link.addEventListener(
+        "touchend",
+        (event) => {
+          if (!armed) return;
+          armed = false;
+          event.preventDefault();
+          openBrowserNavLink(link);
+        },
+        { passive: false }
+      );
+    });
+  }
+
   function startSelectionGuard() {
     if (selectionFrame) return;
     const tick = () => {
@@ -268,6 +310,7 @@
   function init() {
     window.__lunarTouch = state;
     bindGlobalTouchLock();
+    bindBrowserNavLinks();
 
     document.querySelectorAll("[data-thrust]").forEach((button) => {
       if (coarsePointer) {

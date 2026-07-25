@@ -230,13 +230,12 @@ canvas {
   }
 
   html {
-    touch-action: none;
+    /* Avoid touch-action: none here; it blocks taps on the GitHub link. */
     overflow: hidden;
     height: 100%;
   }
 
   body {
-    touch-action: none;
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
@@ -282,6 +281,7 @@ canvas {
   .github-link * {
     touch-action: manipulation !important;
     pointer-events: auto !important;
+    -webkit-touch-callout: default !important;
     -webkit-user-select: auto !important;
     user-select: auto !important;
   }
