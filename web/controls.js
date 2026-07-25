@@ -261,6 +261,13 @@
     button.addEventListener("lostpointercapture", release);
   }
 
+  function setAutopilotButtonOn(on) {
+    const button = document.querySelector('[data-action="autopilot"]');
+    if (!button) return;
+    button.classList.toggle("is-active", on);
+    button.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
   function bindActionButton(button) {
     const action = button.dataset.action;
     if (!action) return;
@@ -268,9 +275,18 @@
     const fire = (event) => {
       preventTouchDefaults(event);
       clearPendingActions();
-      if (action === "autopilot") state.toggle_autopilot = true;
-      if (action === "reset") state.reset = true;
-      if (action === "new") state.new_level = true;
+      if (action === "autopilot") {
+        state.toggle_autopilot = true;
+        setAutopilotButtonOn(!button.classList.contains("is-active"));
+      }
+      if (action === "reset") {
+        state.reset = true;
+        setAutopilotButtonOn(false);
+      }
+      if (action === "new") {
+        state.new_level = true;
+        setAutopilotButtonOn(false);
+      }
     };
 
     if (coarsePointer) {
