@@ -23,14 +23,10 @@ use world::{SCREEN_HEIGHT, SCREEN_WIDTH};
 
 #[cfg(target_arch = "wasm32")]
 fn load_wasm_build_id(mut commands: Commands) {
-    use js_sys::Reflect;
-    use wasm_bindgen::JsValue;
-
-    let suffix = web_sys::window()
-        .and_then(|window| Reflect::get(&window, &JsValue::from_str("__lunarWasmHash")).ok())
-        .and_then(|value| value.as_string())
-        .unwrap_or_default();
-    commands.insert_resource(WasmBuildId(suffix));
+    // Matches the GitHub Release tag published from Cargo.toml (e.g. v0.1.1).
+    commands.insert_resource(WasmBuildId(
+        concat!("v", env!("CARGO_PKG_VERSION")).to_string(),
+    ));
 }
 
 #[cfg(not(target_arch = "wasm32"))]
