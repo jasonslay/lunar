@@ -57,6 +57,13 @@
     );
   }
 
+  // Page chrome that must keep normal browser tap behavior (e.g. open GitHub).
+  // The mobile touch lock otherwise preventDefault()'s every touchstart and
+  // suppresses synthesized clicks on links.
+  function isBrowserNavTarget(target) {
+    return Boolean(target?.closest?.("a.github-link, [data-allow-browser-nav]"));
+  }
+
   function startSelectionGuard() {
     if (selectionFrame) return;
     const tick = () => {
@@ -77,6 +84,9 @@
       document.documentElement.classList.add("lunar-mobile");
 
       const blockBrowserDefaults = (event) => {
+        if (isBrowserNavTarget(event.target)) {
+          return;
+        }
         preventTouchDefaults(event);
       };
 

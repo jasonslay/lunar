@@ -32,7 +32,7 @@ body {
   position: fixed;
   top: max(0.75rem, env(safe-area-inset-top));
   right: max(0.75rem, env(safe-area-inset-right));
-  z-index: 20;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,6 +41,7 @@ body {
   color: #5fd67a;
   border-radius: 999px;
   touch-action: manipulation;
+  pointer-events: auto;
   -webkit-user-select: auto;
   user-select: auto;
   transition: color 0.15s ease, background-color 0.15s ease;
@@ -274,6 +275,15 @@ canvas {
   html.lunar-thrust-active * {
     -webkit-user-select: none !important;
     user-select: none !important;
+  }
+
+  /* Keep the GitHub control tappable despite the page-wide touch lock. */
+  .github-link,
+  .github-link * {
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+    -webkit-user-select: auto !important;
+    user-select: auto !important;
   }
 
   :root {
