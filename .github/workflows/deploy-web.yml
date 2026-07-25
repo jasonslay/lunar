@@ -51,23 +51,31 @@ jobs:
       - name: Package web release
         run: tar -C dist -czf lunar-web.tar.gz .
 
-      # Rolling tag `web` — jtslay.com downloads this instead of compiling WASM.
+      # Semver tag from Cargo.toml (e.g. v0.1.0). Bump version to cut a new
+      # release; same version re-uploads the asset. jtslay.com pulls latest.
       - name: Publish web release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          notes="Web build from \`${GITHUB_SHA}\`.
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n1)"
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            echo "Could not parse semver from Cargo.toml (got: '${version}')" >&2
+            exit 1
+          fi
+          tag="v${version}"
+          notes="Release \`${tag}\` from \`${GITHUB_SHA}\`.
 
           Asset \`lunar-web.tar.gz\` is consumed by [jtslay.com](https://jtslay.com/lunar/)."
-          if gh release view web >/dev/null 2>&1; then
-            gh release upload web lunar-web.tar.gz --clobber
-            gh release edit web --target "${GITHUB_SHA}" --notes "${notes}"
+          echo "Publishing ${tag}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            gh release upload "${tag}" lunar-web.tar.gz --clobber
+            gh release edit "${tag}" --target "${GITHUB_SHA}" --notes "${notes}" --latest
           else
-            gh release create web lunar-web.tar.gz \
-              --title "Web build" \
+            gh release create "${tag}" lunar-web.tar.gz \
+              --title "${tag}" \
               --notes "${notes}" \
               --target "${GITHUB_SHA}" \
-              --latest=false
+              --latest
           fi
 
       # Optional: set JTSLAY_COM_DISPATCH_TOKEN (PAT with repo scope on jasonslay/jtslay.com)

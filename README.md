@@ -51,7 +51,7 @@ Open `http://127.0.0.1:8080/lunar/` (Trunk serves under `public_url`).
 
 **https://jtslay.com/lunar/**
 
-Each deploy to `main` refreshes the rolling GitHub Release tag [`web`](https://github.com/jasonslay/lunar/releases/tag/web) (`lunar-web.tar.gz`), which [jtslay.com](https://jtslay.com) downloads for `/lunar/`.
+Each deploy to `main` publishes a GitHub Release from the semver in `Cargo.toml` (e.g. [`v0.1.0`](https://github.com/jasonslay/lunar/releases/latest), asset `lunar-web.tar.gz`), which [jtslay.com](https://jtslay.com) downloads for `/lunar/`. Bump `version` in `Cargo.toml` to cut a new release tag; pushing the same version refreshes that release’s asset.
 
 ## Controls
 
