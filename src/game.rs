@@ -10,9 +10,8 @@ use crate::world::{World, WORLD_HEIGHT, WORLD_WIDTH, TERRAIN_MAX_X, TERRAIN_MIN_
 const SPAWN_ALTITUDE: f32 = 50.0;
 const MIN_SPAWN_Y: f32 = 12.0;
 const SPAWN_DOWNRANGE: f32 = 520.0;
-const INITIAL_ORBITAL_SPEED: f32 = 18.0;
-const INITIAL_DESCENT_VY: f32 = 2.5;
-const ORBITAL_STEER_RATE: f32 = 1.2;
+pub(crate) const INITIAL_ORBITAL_SPEED: f32 = 36.0;
+pub(crate) const INITIAL_DESCENT_VY: f32 = 5.0;
 const MAX_LANDING_VY: f32 = 3.0;
 const MAX_LANDING_VX: f32 = 2.0;
 const MAX_LANDING_ANGLE: f32 = 15.0_f32.to_radians();
@@ -47,9 +46,6 @@ pub struct GameState {
     /// Set on a successful landing; zero while flying or after a crash.
     pub score: LandingScore,
     pub seed: u64,
-    pub approach_altitude: f32,
-    pub initial_orbital_speed: f32,
-    pub approach_vx_sign: f32,
     pub autopilot: bool,
     autopilot_smoothed_pitch: f32,
     accumulator: f32,
@@ -62,16 +58,12 @@ impl GameState {
         let spawn_x = (world.pad_center_x + SPAWN_DOWNRANGE).clamp(8.0, WORLD_WIDTH - 8.0);
         let spawn = Vec2::new(spawn_x, spawn_y);
 
-        let approach_vx_sign = -1.0;
-        let initial_vel =
-            Vec2::new(approach_vx_sign * INITIAL_ORBITAL_SPEED, INITIAL_DESCENT_VY);
+        let initial_vel = Vec2::new(-INITIAL_ORBITAL_SPEED, INITIAL_DESCENT_VY);
 
         let mut lander = Lander::new(spawn);
         lander.body.vel = initial_vel;
         lander.body.set_approach_attitude(initial_vel);
         lander.update_hull_world();
-
-        let approach_altitude = world.altitude(spawn.x, spawn.y);
 
         Self {
             lander,
@@ -80,9 +72,6 @@ impl GameState {
             fuel: FUEL_CAPACITY,
             score: LandingScore::default(),
             seed,
-            approach_altitude,
-            initial_orbital_speed: INITIAL_ORBITAL_SPEED,
-            approach_vx_sign,
             autopilot: false,
             autopilot_smoothed_pitch: 0.0,
             accumulator: 0.0,
@@ -234,9 +223,6 @@ fn physics_step(game: &mut GameState, input: &ThrustInput) {
 
     game.lander.body.apply_force_and_torque(force, torque, PHYSICS_DT);
     game.lander.body.apply_gravity(PHYSICS_DT);
-    if !game.autopilot {
-        apply_orbital_descent(game);
-    }
     game.lander.body.integrate(PHYSICS_DT);
     game.lander.update_hull_world();
 
@@ -258,25 +244,6 @@ fn flew_off_horizontal_view(lander_x: f32, cam_x: f32) -> bool {
     let view_left = cam_x;
     let view_right = cam_x + VIEW_WIDTH;
     lander_x < view_left - MARGIN || lander_x > view_right + MARGIN
-}
-
-fn apply_orbital_descent(game: &mut GameState) {
-    let pos = game.lander.body.pos;
-    let alt = game
-        .world
-        .altitude(pos.x, pos.y)
-        .min(game.approach_altitude);
-
-    let alt_ratio = if game.approach_altitude > 0.0 {
-        (alt / game.approach_altitude).clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
-
-    let target_vx = game.approach_vx_sign * game.initial_orbital_speed * alt_ratio.sqrt();
-    let steer = (ORBITAL_STEER_RATE * PHYSICS_DT).min(1.0);
-    let vx = game.lander.body.vel.x;
-    game.lander.body.vel.x += (target_vx - vx) * steer;
 }
 
 fn resolve_landing(game: &mut GameState) {

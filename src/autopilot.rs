@@ -299,7 +299,7 @@ pub fn compute_thrust(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::game::{GameState, GameStatus};
+    use crate::game::{GameState, GameStatus, INITIAL_DESCENT_VY, INITIAL_ORBITAL_SPEED};
     use crate::physics::{sum_thrusters, PHYSICS_DT};
     use crate::world::{World, WORLD_MIN_X, WORLD_WIDTH};
 
@@ -379,7 +379,7 @@ mod tests {
     fn spawn_approach_lander(world: &World) -> Lander {
         let spawn_y = (world.pad_y - 50.0).max(12.0);
         let spawn_x = (world.pad_center_x + 480.0).clamp(8.0, WORLD_WIDTH - 8.0);
-        let initial_vel = Vec2::new(-18.0, 2.5);
+        let initial_vel = Vec2::new(-INITIAL_ORBITAL_SPEED, INITIAL_DESCENT_VY);
 
         let mut lander = Lander::new(Vec2::new(spawn_x, spawn_y));
         lander.body.vel = initial_vel;
