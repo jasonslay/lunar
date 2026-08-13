@@ -1,7 +1,9 @@
+use bevy::camera::visibility::RenderLayers;
+use bevy::camera::{CameraProjection, Projection, ScalingMode};
+use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
-use bevy::render::camera::{CameraProjection, Projection, ScalingMode};
-use bevy::render::view::RenderLayers;
-use bevy::sprite::{Anchor, ColorMaterial, MeshMaterial2d};
+use bevy::sprite::Anchor;
+use bevy::text::FontSize;
 use bevy::window::PrimaryWindow;
 use glam::Vec2;
 use rand::Rng;
@@ -129,11 +131,11 @@ pub fn setup_hud(
             HudLine(i),
             Text2d::new(""),
             TextFont {
-                font_size: HUD_FONT_SIZE,
+                font_size: FontSize::Px(HUD_FONT_SIZE),
                 ..default()
             },
             TextColor(GREEN),
-            Anchor::TopLeft,
+            Anchor::TOP_LEFT,
             Transform::from_xyz(hud_left, hud_top - i as f32 * HUD_LINE_STEP, 1.0),
             UI_LAYERS,
         ));
@@ -151,12 +153,12 @@ pub fn setup_hud(
     commands.spawn((
         StatusText,
         Text2d::new(""),
-        TextFont {
-            font_size: STATUS_FONT_SIZE,
-            ..default()
-        },
-        TextColor(BRIGHT_GREEN),
-        Anchor::Center,
+            TextFont {
+                font_size: FontSize::Px(STATUS_FONT_SIZE),
+                ..default()
+            },
+            TextColor(BRIGHT_GREEN),
+            Anchor::CENTER,
         Transform::from_xyz(0.0, 0.0, 1.0),
         Visibility::Hidden,
         UI_LAYERS,
@@ -167,11 +169,11 @@ pub fn setup_hud(
             WasmHashLabel,
             Text2d::new(wasm_build.0.clone()),
             TextFont {
-                font_size: WASM_HASH_FONT_SIZE,
+                font_size: FontSize::Px(WASM_HASH_FONT_SIZE),
                 ..default()
             },
             TextColor(DIM_GREEN),
-            Anchor::BottomRight,
+            Anchor::BOTTOM_RIGHT,
             Transform::from_xyz(0.0, 0.0, 1.0),
             UI_LAYERS,
         ));
@@ -189,11 +191,11 @@ fn lander_fill_mesh(vertices: &[Vec2]) -> Mesh {
     }
 
     let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
+        PrimitiveTopology::TriangleList,
         bevy::asset::RenderAssetUsages::RENDER_WORLD,
     );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_indices(bevy::render::mesh::Indices::U32(indices));
+    mesh.insert_indices(Indices::U32(indices));
     mesh
 }
 
@@ -216,7 +218,7 @@ pub fn update_lander_body(mut lander: Query<&mut Transform, With<LanderBody>>, g
     let screen = world_to_screen(pos, cam);
     let bevy_pos = to_bevy(screen);
 
-    let Ok(mut transform) = lander.get_single_mut() else {
+    let Ok(mut transform) = lander.single_mut() else {
         return;
     };
 
@@ -261,7 +263,7 @@ fn layout_hud_lines(
 ) {
     for (HudLine(i), mut transform, _, mut font) in hud {
         transform.translation = Vec3::new(hud_left, hud_top - *i as f32 * line_step, 1.0);
-        font.font_size = font_size;
+        font.font_size = FontSize::Px(font_size);
     }
 }
 
@@ -851,7 +853,7 @@ pub fn update_hud(
         ),
     >,
 ) {
-    let Ok(window) = window.get_single() else {
+    let Ok(window) = window.single() else {
         return;
     };
     let window_w = window.width();
@@ -868,7 +870,7 @@ pub fn update_hud(
     let hud_left = -window_w * 0.5 + margin;
     let hud_top = window_h * 0.5 - margin;
 
-    if let Ok(mut panel) = hud_panel.get_single_mut() {
+    if let Ok(mut panel) = hud_panel.single_mut() {
         panel.translation = Vec3::new(
             hud_left - pad + bg_w * 0.5,
             hud_top + pad - bg_h * 0.5,
@@ -916,10 +918,10 @@ pub fn update_hud(
     let status_x = 0.0;
     let status_y = -window_h * 0.5 + status_margin + STATUS_BG_HEIGHT * scale * 0.5;
 
-    if let Ok((mut text, mut transform, mut vis, mut font)) = status.get_single_mut() {
+    if let Ok((mut text, mut transform, mut vis, mut font)) = status.single_mut() {
         transform.translation.x = status_x;
         transform.translation.y = status_y;
-        font.font_size = status_font;
+        font.font_size = FontSize::Px(status_font);
 
         match game.status {
             GameStatus::Flying => {
@@ -940,7 +942,7 @@ pub fn update_hud(
         }
     }
 
-    if let Ok((mut transform, mut vis)) = status_panel.get_single_mut() {
+    if let Ok((mut transform, mut vis)) = status_panel.single_mut() {
         transform.translation.x = status_x;
         transform.translation.y = status_y;
         transform.scale = Vec3::splat(scale);
@@ -953,9 +955,9 @@ pub fn update_hud(
 
     let hash_margin = WASM_HASH_MARGIN * scale;
     let hash_font = WASM_HASH_FONT_SIZE * scale;
-    if let Ok((mut transform, mut font)) = wasm_hash.get_single_mut() {
+    if let Ok((mut transform, mut font)) = wasm_hash.single_mut() {
         transform.translation.x = window_w * 0.5 - hash_margin;
         transform.translation.y = -window_h * 0.5 + hash_margin;
-        font.font_size = hash_font;
+        font.font_size = FontSize::Px(hash_font);
     }
 }

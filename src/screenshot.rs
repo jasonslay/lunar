@@ -60,5 +60,5 @@ fn capture_screenshot(mut commands: Commands, mut job: ResMut<ScreenshotJob>) {
     commands
         .spawn(Screenshot::primary_window())
         .observe(save_to_disk(path))
-        .observe(|_: Trigger<ScreenshotCaptured>| process::exit(0));
+        .observe(|_: On<ScreenshotCaptured>| process::exit(0));
 }
