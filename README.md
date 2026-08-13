@@ -1,6 +1,6 @@
 # Lunar Lander
 
-A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org/). Fly a powered descent from downrange, bleed off horizontal speed over procedural terrain, and touch down on the landing pad.
+A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org/) 0.19.1. Fly a powered descent from downrange, bleed off horizontal speed over procedural terrain, and touch down on the landing pad.
 
 ![Approach from downrange](docs/screenshots/approach.png)
 
@@ -22,7 +22,7 @@ A physics-based 2D lunar lander built in Rust with [Bevy](https://bevyengine.org
 
 ## Requirements
 
-- **Native:** Rust 1.85+ (edition 2024), GPU with Vulkan/Metal/DX12
+- **Native:** Rust 1.95+ (edition 2024), GPU with Vulkan/Metal/DX12
 - **Web:** A modern browser with WebGL2 (no install required)
 
 ## Run

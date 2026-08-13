@@ -38,7 +38,7 @@ fn window_plugin() -> WindowPlugin {
     WindowPlugin {
         primary_window: Some(Window {
             title: "Lunar Lander".into(),
-            resolution: WindowResolution::new(SCREEN_WIDTH, SCREEN_HEIGHT),
+            resolution: WindowResolution::new(SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
             #[cfg(target_arch = "wasm32")]
             canvas: Some("#bevy_canvas".into()),
             #[cfg(target_arch = "wasm32")]
@@ -61,10 +61,10 @@ fn default_plugins() -> impl PluginGroup {
         use bevy::render::RenderPlugin;
 
         return plugins.set(RenderPlugin {
-            render_creation: RenderCreation::Automatic(WgpuSettings {
+            render_creation: RenderCreation::Automatic(Box::new(WgpuSettings {
                 backends: Some(Backends::VULKAN),
                 ..default()
-            }),
+            })),
             ..default()
         });
     }
