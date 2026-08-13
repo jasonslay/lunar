@@ -61,10 +61,10 @@ fn default_plugins() -> impl PluginGroup {
         use bevy::render::RenderPlugin;
 
         return plugins.set(RenderPlugin {
-            render_creation: RenderCreation::Automatic(WgpuSettings {
+            render_creation: RenderCreation::Automatic(Box::new(WgpuSettings {
                 backends: Some(Backends::VULKAN),
                 ..default()
-            }),
+            })),
             ..default()
         });
     }
